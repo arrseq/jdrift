@@ -1,0 +1,8 @@
+[package]
+name = "jdrift-interface"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thiserror = "1.0.64"
+tungstenite = "0.24.0"
