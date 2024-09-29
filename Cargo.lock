@@ -1379,6 +1379,8 @@ version = "0.1.0"
 dependencies = [
  "thiserror",
  "tungstenite",
+ "xbinser",
+ "xbinser-macros",
 ]
 
 [[package]]
@@ -3940,6 +3942,25 @@ dependencies = [
  "libc",
  "linux-raw-sys",
  "rustix",
+]
+
+[[package]]
+name = "xbinser"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21357864d3a18ae8e6fbbce790e113f0f77ddca0806417a0d597bd805c4e8827"
+dependencies = [
+ "bytemuck",
+]
+
+[[package]]
+name = "xbinser-macros"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a93da3b09228d8a9aa12df415e629b7d8104e9a81faaac907b333b7ad66df56"
+dependencies = [
+ "quote",
+ "syn 2.0.77",
 ]
 
 [[package]]

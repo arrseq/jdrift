@@ -10,6 +10,6 @@
     "@tauri-apps/cli": "^1"
   },
   "dependencies": {
-    "xbinser": "^1.0.0"
+    "xbinser": "^1.0.1
   }
 }

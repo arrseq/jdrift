@@ -1,6 +1,6 @@
 body {
-    background: #050505;
-    color: #999999;
+    background: #929292;
+    color: #000000;
     font: normal 10px "JetBrains Mono Medium", monospace;
     user-select: none;
     display: flex;
@@ -15,7 +15,7 @@ body {
 * { box-sizing: border-box; }
 
 .message {
-    padding: 0px 40px;
+    padding: 0 40px;
     max-width: 400px;
 }
 
@@ -33,7 +33,7 @@ img {
     display: flex;
     width: 10px;
     height: 1px;
-    border: 1px solid #ffffff;
+    border: 1px solid #000000;
     animation: 0.5s infinite flash;
 }
 

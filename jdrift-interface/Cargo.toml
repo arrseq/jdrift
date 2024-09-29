@@ -6,3 +6,5 @@ edition = "2021"
 [dependencies]
 thiserror = "1.0.64"
 tungstenite = "0.24.0"
+xbinser = "0.1.2"
+xbinser-macros = "0.1.1"
