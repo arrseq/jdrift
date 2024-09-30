@@ -1,15 +1,9 @@
 const { tauri, app, dialog } = window.__TAURI__;
 
 let html = `
-    <img width="150px" src="assets/logo.svg" alt="Logo">
-    <span class="message">If this message is being displayed, then 'main.js' did not load yet.</span>
-    
-    <div class="indicator">
-        <span></span>
-        <span></span>
-        <span></span>
-        <span></span>
-        <span></span>
+    <div class="box">
+        <div class="indicator"></div>
+        <span class="message">If this message is being displayed, then 'main.js' did not load yet.</span>
     </div>
 `;
 
@@ -30,25 +24,20 @@ async function main() {
     document.body.innerHTML = html;
 
     let message_element = document.querySelector(".message");
-    let indicator_element = document.querySelector(".indicator");
 
     function output(message) {
         console.log(message);
         message_element.innerText = `ok: ${message}`;
-        message_element.style.background = "transparent";
     }
 
     function ok(message) {
         console.log(message);
         message_element.innerText = `ok: ${message}`;
-        message_element.style.background = "#4AFF5C";
     }
 
     function output_error(message) {
         console.log(message);
         message_element.innerText = `error: ${message}`;
-        message_element.style.background = "#f30038";
-        indicator_element.style = "display: none";
     }
 
     let port = await tauri.invoke("backend");
@@ -82,5 +71,7 @@ async function main() {
         output_error(`Connection to command center was closed. Attempting to reconnect in 1s`);
         setTimeout(() => main().then(), 1000);
     }
+
+    ws.onmessage = async (data) => console.log(await data.data.arrayBuffer());
 }
 
