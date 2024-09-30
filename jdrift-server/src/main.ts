@@ -1,4 +1,5 @@
-const { tauri, app, dialog } = window.__TAURI__;
+import { Decoder } from "xbinser/src/lib";
+const { tauri, app, dialog } = (window as any).__TAURI__;
 
 let html = `
     <div class="box">
@@ -19,6 +20,10 @@ function elapsed(s, e, m) {
     let se = ms2s(ms);
     return `completed after ${se}s: ${m}`;
 }
+
+let decoder = new Decoder({
+    command: "enum Hi[], Bye[]"
+});
 
 async function main() {
     document.body.innerHTML = html;
@@ -72,6 +77,10 @@ async function main() {
         setTimeout(() => main().then(), 1000);
     }
 
-    ws.onmessage = async (data) => console.log(await data.data.arrayBuffer());
+    ws.onmessage = async (data) => {
+        let buffer = new Uint8Array(await data.data.arrayBuffer());
+        let decoded = decoder.decode(0n, buffer);
+        console.log(decoded);
+    }
 }
 

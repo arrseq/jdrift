@@ -4,12 +4,14 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "build:js": "esbuild src/main.ts --bundle --platform=browser --minify --sourcemap --outfile=src/build/index.js --tsconfig=tsconfig.json"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^1"
   },
   "dependencies": {
-    "xbinser": "^1.0.1
+    "esbuild": "^0.24.0",
+    "xbinser": "^1.0.1"
   }
 }

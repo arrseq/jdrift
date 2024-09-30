@@ -6,7 +6,7 @@ use jdrift_interface::center::message::Message;
 fn host_session(center: &mut Center) {
     let mut session = center.session().expect("Could not start session");
     loop {
-        session.send(Message::Bye);
+        if let Err(_) = session.send(Message::Bye) { break }
         sleep(Duration::from_secs(2));
     }
 }

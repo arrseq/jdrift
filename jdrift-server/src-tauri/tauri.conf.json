@@ -3,7 +3,9 @@
   "build": {
     "devPath": "../src",
     "distDir": "../src",
-    "withGlobalTauri": true
+    "withGlobalTauri": true,
+    "beforeDevCommand": "npm run build:js",
+    "beforeBuildCommand": "npm run build:js"
   },
   "package": {
     "productName": "jdrift-server",
@@ -44,7 +46,8 @@
         "icons/128x128@2x.png",
         "icons/icon.icns",
         "icons/icon.ico"
-      ]
+      ],
+      "resources": [ "../src/build" ]
     }
   }
 }

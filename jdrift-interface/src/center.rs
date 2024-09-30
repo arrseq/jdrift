@@ -22,11 +22,12 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn send(&mut self, message: Message) {
+    pub fn send(&mut self, message: Message) -> Result<(), ()> {
         // fixme: find stream for tungstenite
         let mut bytes = Cursor::new(vec![0u8; 0]);
         message.encode(&mut bytes).unwrap();
-        self.socket.send(tungstenite::Message::Binary(bytes.into_inner())).expect("Failed to send message");
+        // self.socket.send(tungstenite::Message::Binary(bytes.into_inner()));
+        self.socket.send(tungstenite::Message::Binary(vec![0, 0])).map_err(|_| ())
     }
 }
 
