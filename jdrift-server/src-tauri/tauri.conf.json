@@ -28,8 +28,7 @@
         "title": "jdrift-server",
         "width": 500,
         "height": 250,
-        "center": true,
-        "titleBarStyle": "transparent"
+        "center": true
       }
     ],
     "security": {

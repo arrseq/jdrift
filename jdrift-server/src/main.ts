@@ -1,5 +1,25 @@
 import { Decoder } from "xbinser/src/lib";
-const { tauri, app, dialog } = (window as any).__TAURI__;
+import {create, Kind} from "./main/create";
+import {delete_element} from "./main/delete";
+import {set_text} from "./main/set_text";
+import {set_property} from "./main/set_property";
+
+function tauri_ask(message: string, options: any): boolean {
+    if (!(window as any).__TAURI__) return;
+    const { dialog } = (window as any).__TAURI__;
+    dialog.ask(message, options);
+}
+
+let params = new URLSearchParams(window.location.search);
+
+function tauri_invoke(channel: string): number {
+    let backend = params.get("port");
+    if (channel == "backend" && backend) return Number(backend);
+
+    if (!(window as any).__TAURI__) return;
+    const { tauri } = (window as any).__TAURI__;
+    return tauri.invoke(channel);
+}
 
 let html = `
     <div class="box">
@@ -22,11 +42,40 @@ function elapsed(s, e, m) {
 }
 
 let decoder = new Decoder({
-    command: "enum Hi[], Bye[]"
+    class: "u32",
+    kind: [
+        "enum[",
+            "create[",
+                "parent: u32, ",
+                "kind: enum[division[], span[], paragraph[], button[], header[]]",
+            "], ",
+            "delete[], ",
+            "set_text[text: string], ",
+            "set_property[kind: enum[style[], attribute[]], property: string, value: string]",
+        "]"
+    ].join("")
 });
+
+export interface PropertyKind {
+    style?: {};
+    attribute?: {};
+}
+
+interface MessageKind  {
+    create?: { parent: number, kind: Kind };
+    delete?: {};
+    set_text?: { text: string };
+    set_property?: { kind: PropertyKind, property: string, value: string };
+}
+
+interface Message {
+    class: number;
+    kind: MessageKind;
+}
 
 async function main() {
     document.body.innerHTML = html;
+    (document.body as any).style = "";
 
     let message_element = document.querySelector(".message");
 
@@ -45,7 +94,7 @@ async function main() {
         message_element.innerText = `error: ${message}`;
     }
 
-    let port = await tauri.invoke("backend");
+    let port = await tauri_invoke("backend");
     let address = `ws://localhost:${port}`;
     output(`attempting to connect to '${address}'`);
 
@@ -59,13 +108,13 @@ async function main() {
         if (do_not_show_again) return;
         do_not_show_again = true;
 
-        let open_dev = await dialog.ask(elapsed(start, Date.now(), message), {
+        let open_dev = await tauri_ask(elapsed(start, Date.now(), message), {
             okLabel: "open",
             cancelLabel: "no",
             type: "error",
             title: "controller socket error"
         });
-        if (open_dev) { tauri.invoke('open_devtools'); }
+        if (open_dev) { tauri_invoke('open_devtools'); }
     }
 
     ws.onopen = () => {
@@ -79,8 +128,12 @@ async function main() {
 
     ws.onmessage = async (data) => {
         let buffer = new Uint8Array(await data.data.arrayBuffer());
-        let decoded = decoder.decode(0n, buffer);
-        console.log(decoded);
+        let decoded = decoder.decode(0n, buffer)[0] as Message;
+        let class_id = Number(decoded.class);
+        if (decoded.kind.create)       create        (class_id, Number(decoded.kind.create.parent), decoded.kind.create.kind);
+        if (decoded.kind.delete)       delete_element(class_id);
+        if (decoded.kind.set_text)     set_text      (class_id, decoded.kind.set_text.text);
+        if (decoded.kind.set_property) set_property  (class_id, decoded.kind.set_property.kind, decoded.kind.set_property.property, decoded.kind.set_property.value);
     }
 }
 

@@ -3946,9 +3946,9 @@ dependencies = [
 
 [[package]]
 name = "xbinser"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21357864d3a18ae8e6fbbce790e113f0f77ddca0806417a0d597bd805c4e8827"
+checksum = "d891848930cca9faf0fc9e2aa74ffaf0f7721ce5ffa82ce0adbdf19c02ef60c3"
 dependencies = [
  "bytemuck",
 ]
