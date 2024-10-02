@@ -20,4 +20,5 @@ pub struct Element {
 
 pub trait Inner {
     fn build(&self, builder: &mut Builder);
+    fn get_kind(&self) -> Kind;
 }

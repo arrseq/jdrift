@@ -9,6 +9,9 @@ use thiserror::Error;
 use tungstenite::handshake::server::NoCallback;
 use tungstenite::{accept, HandshakeError, ServerHandshake, WebSocket};
 use xbinser::encoding::Encoded;
+use crate::center::element::builder::Builder;
+use crate::center::element::container::Container;
+use crate::center::element::Inner;
 
 #[derive(Debug)]
 pub struct Center {
@@ -28,8 +31,22 @@ impl Session {
             socket,
         };
 
-        instance.send(Message { class: Self::BODY_CLASS, kind: message::Kind::SetText { text: "qwgdiuasghduiasidgashd".to_string() } })?;
+        instance.send(Message { class: Self::BODY_CLASS, kind: message::Kind::SetText { text: "".to_string() } })?;
+
+        let container = Container::default();
+        let mut builder_root = Builder::default();
+
+        container.build(&mut builder_root);
+        container.build(&mut builder_root);
+
+        dbg!(builder_root.get_commands());
+        instance.send_builder(&mut builder_root)?;
         Ok(instance)
+    }
+
+    fn send_builder(&mut self, builder: &mut Builder) -> tungstenite::Result<()> {
+        for command in builder.get_commands().iter() { self.send(command.clone())? }
+        Ok(())
     }
 
     fn send(&mut self, message: Message) -> tungstenite::Result<()> {
