@@ -1,7 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=REM:ital,wght@0,100..900;1,100..900&display=swap');
+
 body {
-    background: #929292;
-    color: #000000;
-    font: normal 10px "JetBrains Mono Medium", monospace;
+    background: #181818;
+    color: #B4B4B4;
+    font: normal 10px "REM";
     user-select: none;
     display: flex;
     align-items: center;
@@ -32,7 +34,7 @@ body {
     width: 15px;
     height: 15px;
     border: 1px solid transparent;
-    border-top-color: #000000;
+    border-top-color: #B4B4B4;
     animation: 0.25s linear infinite spin;
     border-radius: 100%;
 }

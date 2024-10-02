@@ -1,14 +1,5 @@
 use xbinser_macros::{EnumEncoded, StructEncoded};
-
-#[derive(Debug, Clone, Copy, PartialEq, EnumEncoded)]
-pub enum ElementKind {
-    Division,
-    Span,
-    Paragraph,
-    Button,
-    Header,
-    Canvas
-}
+use crate::center::element;
 
 #[derive(Debug, Clone, PartialEq, EnumEncoded)]
 pub enum PropertyKind {
@@ -18,7 +9,7 @@ pub enum PropertyKind {
 
 #[derive(Debug, Clone, PartialEq, EnumEncoded)]
 pub enum Kind {
-    Create { parent: u32, kind: ElementKind },
+    Create { parent: u32, kind: element::Kind },
     Delete,
     SetText { text: String },
     SetProperty { kind: PropertyKind, property: String, value: String },

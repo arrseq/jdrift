@@ -1,52 +1,56 @@
 {
-  "$schema": "https://schema.tauri.app/config/1",
-  "build": {
-    "devPath": "../src",
-    "distDir": "../src",
-    "withGlobalTauri": true,
-    "beforeDevCommand": "npm run build:js",
-    "beforeBuildCommand": "npm run build:js"
-  },
-  "package": {
-    "productName": "jdrift-server",
-    "version": "0.1.0"
-  },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "dialog": {
-        "all": true
-      },
-      "app": { "all": true },
-      "shell": {
-        "all": false,
-        "open": true
-      }
+    "$schema": "https://schema.tauri.app/config/1",
+    "build": {
+        "devPath": "../src",
+        "distDir": "../src",
+        "withGlobalTauri": true,
+        "beforeDevCommand": "npm run build:js",
+        "beforeBuildCommand": "npm run build:js"
     },
-    "windows": [
-      {
-        "title": "jdrift-server",
-        "width": 500,
-        "height": 250,
-        "center": true
-      }
-    ],
-    "security": {
-      "csp": null,
-      "dangerousUseHttpScheme": true
+    "package": {
+        "productName": "jdrift-server",
+        "version": "0.1.0"
     },
-    "bundle": {
-      "active": true,
-      "targets": "all",
-      "identifier": "com.github.jdrift",
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
-      "resources": [ "../src/build" ]
+    "tauri": {
+        "allowlist": {
+            "all": false,
+            "dialog": {
+                "all": true
+            },
+            "app": { "all": true },
+            "shell": {
+                "all": false,
+                "open": true
+            },
+            "window": {
+                "startDragging": true
+            }
+        },
+        "windows": [
+            {
+                "title": "jdrift-server",
+                "width": 500,
+                "height": 250,
+                "center": true,
+                "decorations": false
+            }
+        ],
+        "security": {
+            "csp": null,
+            "dangerousUseHttpScheme": true
+        },
+        "bundle": {
+            "active": true,
+            "targets": "all",
+            "identifier": "com.github.jdrift",
+            "icon": [
+                "icons/32x32.png",
+                "icons/128x128.png",
+                "icons/128x128@2x.png",
+                "icons/icon.icns",
+                "icons/icon.ico"
+            ],
+            "resources": [ "../src/build" ]
+        }
     }
-  }
 }

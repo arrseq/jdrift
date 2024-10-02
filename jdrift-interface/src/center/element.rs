@@ -1,42 +1,23 @@
-pub trait Element {
-    
+pub mod builder;
+pub mod container;
+
+use xbinser_macros::EnumEncoded;
+use crate::center::element::builder::Builder;
+
+#[derive(Debug, Clone, Copy, PartialEq, EnumEncoded)]
+pub enum Kind {
+    Division,
+    Span,
+    Paragraph,
+    Button,
+    Header,
+    Canvas
 }
 
-pub trait Tree {
-    fn append_child(&mut self, child: Box<dyn Element>);
-    fn get_children(&self) -> &[&dyn Element];
-    fn get_children_mut(&mut self); // todo: Implement ChildrenGuard
+pub struct Element {
+    class: Option<u32>
 }
 
-pub struct Container {
-    children: Vec<Box<dyn Element>>
-}
-
-impl Container {
-    pub const fn new() -> Self {
-        Self { children: Vec::new() }
-    }
-    
-    pub const fn from_children(children: Vec<Box<dyn Element>>) -> Self {
-        Self { children }
-    }
-}
-
-impl Element for Container {
-    
-}
-
-
-impl Tree for Container {
-    fn append_child(&mut self, child: Box<dyn Element>) {
-        self.children.push(child);
-    }
-
-    fn get_children(&self) -> &[&dyn Element] {
-        todo!()
-    }
-
-    fn get_children_mut(&mut self) {
-        todo!()
-    }
+pub trait Inner {
+    fn build(&self, builder: &mut Builder);
 }

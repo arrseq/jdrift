@@ -1,17 +1,14 @@
 pub mod message;
 pub mod element;
 
+use crate::center::message::Message;
 use std::io;
 use std::io::Cursor;
 use std::net::{TcpListener, TcpStream};
-use std::thread::{sleep, spawn, JoinHandle};
-use std::time::Duration;
 use thiserror::Error;
-use tungstenite::{accept, HandshakeError, ServerHandshake, WebSocket};
 use tungstenite::handshake::server::NoCallback;
+use tungstenite::{accept, HandshakeError, ServerHandshake, WebSocket};
 use xbinser::encoding::Encoded;
-use crate::center::element::{Container, Element};
-use crate::center::message::Message;
 
 #[derive(Debug)]
 pub struct Center {
@@ -20,10 +17,21 @@ pub struct Center {
 
 pub struct Session {
     pub socket: WebSocket<TcpStream>,
-    pub root: Container
 }
 
 impl Session {
+    pub const HEAD_CLASS: u32 = 0;
+    pub const BODY_CLASS: u32 = 1;
+
+    pub fn new(socket: WebSocket<TcpStream>) -> tungstenite::Result<Self> {
+        let mut instance = Self {
+            socket,
+        };
+
+        instance.send(Message { class: Self::BODY_CLASS, kind: message::Kind::SetText { text: "qwgdiuasghduiasidgashd".to_string() } })?;
+        Ok(instance)
+    }
+
     fn send(&mut self, message: Message) -> tungstenite::Result<()> {
         // fixme: find stream for tungstenite
         let mut bytes = Cursor::new(vec![0u8; 0]);
@@ -50,10 +58,7 @@ impl Center {
     }
 
     pub fn accept(&mut self, stream: TcpStream) -> Result<Session, HandshakeError<ServerHandshake<TcpStream, NoCallback>>> {
-        Ok(Session { 
-            socket: accept(stream)?,
-            root: Container::new()
-        })
+        Ok(Session::new(accept(stream)?)?)
     }
 
     pub fn session(&mut self) -> Result<Session, SessionError> {
@@ -63,19 +68,5 @@ impl Center {
             .ok_or(SessionError::NoStream)?
             .map_err(SessionError::Stream)?;
         self.accept(stream).map_err(SessionError::Handshake)
-    }
-}
-
-impl element::Tree for Session {
-    fn append_child(&mut self, child: Box<dyn Element>) {
-        self.root.append_child(child)
-    }
-
-    fn get_children(&self) -> &[&dyn Element] {
-        self.root.get_children()
-    }
-
-    fn get_children_mut(&mut self) {
-        self.root.get_children_mut()
     }
 }

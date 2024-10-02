@@ -25,7 +25,7 @@ fn open_devtools(window: tauri::Window) {
 fn main() {
     let args: Box<[String]> = env::args().collect();
     let command_port: u16 = {
-        let string = args.as_ref().get(1).expect("expected an argument containing a port").clone();
+        let string = args.as_ref().get(1).unwrap_or(&"4417".to_string()).clone();
         string.parse().expect("failed to parse port argument")
     };
 
