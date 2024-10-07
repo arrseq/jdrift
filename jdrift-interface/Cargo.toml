@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+paste = "1.0.15"
 thiserror = "1.0.64"
 tungstenite = "0.24.0"
 xbinser = "0.1.3"

@@ -1,19 +1,29 @@
-use super::Kind;
+use super::{Buildable, Element, Kind};
+use crate::center::element::builder::Builder;
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Container {
-    
+    children: Vec<Element<dyn Buildable>>
 }
 
-impl super::Inner for Container {
-    fn build(&self, builder: &mut super::builder::Builder) {
-        let component = builder.branch(Kind::Division).unwrap();
-        let btn_inner = component.create_element(Kind::Button).unwrap();
-//        builder.
-//        todo!()
+impl Container {
+    pub fn append_child(&mut self, child: Element<dyn Buildable + 'static>) {
+        self.children.push(child);
+    } 
+}
+
+impl Default for Container {
+    fn default() -> Self {
+        Self { children: Vec::new() }
+    }
+}
+
+impl Buildable for Container {
+    fn build(&mut self, builder: Builder) {
+        let component = builder.branch(Kind::Division);
+        todo!()
     }
 
-    fn get_kind(&self) -> super::Kind {
-        Kind::Division
+    fn hydrate(&mut self) {
+        todo!()
     }
 }

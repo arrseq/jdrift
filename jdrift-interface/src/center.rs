@@ -1,47 +1,41 @@
 pub mod message;
 pub mod element;
 
+use crate::center::element::builder::Builder;
+use crate::center::element::Element;
 use crate::center::message::Message;
+use std::cell::RefCell;
 use std::io;
 use std::io::Cursor;
 use std::net::{TcpListener, TcpStream};
+use std::rc::Rc;
 use thiserror::Error;
 use tungstenite::handshake::server::NoCallback;
 use tungstenite::{accept, HandshakeError, ServerHandshake, WebSocket};
 use xbinser::encoding::Encoded;
-use crate::center::element::builder::Builder;
-use crate::center::element::container::Container;
-use crate::center::element::Inner;
 
 #[derive(Debug)]
 pub struct Center {
     tcp_listener: TcpListener
 }
 
-pub struct Session {
-    pub socket: WebSocket<TcpStream>,
+pub(super) struct Inner {
+    socket: WebSocket<TcpStream>
 }
 
-impl Session {
+impl Inner {
     pub const HEAD_CLASS: u32 = 0;
     pub const BODY_CLASS: u32 = 1;
 
     pub fn new(socket: WebSocket<TcpStream>) -> tungstenite::Result<Self> {
-        let mut instance = Self {
-            socket,
-        };
-
-        instance.send(Message { class: Self::BODY_CLASS, kind: message::Kind::SetText { text: "".to_string() } })?;
-
-        let container = Container::default();
-        let mut builder_root = Builder::default();
-
-        container.build(&mut builder_root);
-        container.build(&mut builder_root);
-
-        dbg!(builder_root.get_commands());
-        instance.send_builder(&mut builder_root)?;
+        let mut instance = Self { socket };
+        instance.update()?;
         Ok(instance)
+    }
+    
+    pub(super) fn update(&mut self) -> tungstenite::Result<()> {
+        self.send(Message { class: Self::BODY_CLASS, kind: message::Kind::SetText { text: "".to_string() } })?;
+        Ok(())
     }
 
     fn send_builder(&mut self, builder: &mut Builder) -> tungstenite::Result<()> {
@@ -57,6 +51,34 @@ impl Session {
     }
 }
 
+pub struct Session<RootElement> {
+    root: Element<RootElement>,
+    inner: Rc<RefCell<Inner>>
+}
+
+impl<RootElement> Session<RootElement> {
+    pub fn new(stream: WebSocket<TcpStream>, root: RootElement) -> tungstenite::Result<Self> {
+        let inner = Rc::new(RefCell::new(Inner::new(stream)?));
+        
+        Ok(Self {
+            inner: inner.clone(),
+            root: Element {
+                parent: None,
+                inner: Box::new(root),
+                session: inner,
+                is_hydrated: false
+            }
+        })
+    }
+
+    /// Read and manage events until the connection is closed.
+    /// todo: finish type implementation
+    pub fn read(&mut self) -> Result<(), ()> {
+        if self.inner.borrow_mut().socket.read().is_err() { Err(()) }
+        else { Ok(()) }
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum SessionError {
     #[error("Failed to get stream from incoming iterator")]
@@ -64,7 +86,9 @@ pub enum SessionError {
     #[error("The stream could not be unwrapped")]
     Stream(io::Error),
     #[error("Failed to initiate handshake for websocket client")]
-    Handshake(HandshakeError<ServerHandshake<TcpStream, NoCallback>>)
+    Handshake(HandshakeError<ServerHandshake<TcpStream, NoCallback>>),
+    #[error("Stream error")]
+    Tungstenite(tungstenite::Error)
 }
 
 impl Center {
@@ -74,16 +98,14 @@ impl Center {
         })
     }
 
-    pub fn accept(&mut self, stream: TcpStream) -> Result<Session, HandshakeError<ServerHandshake<TcpStream, NoCallback>>> {
-        Ok(Session::new(accept(stream)?)?)
-    }
-
-    pub fn session(&mut self) -> Result<Session, SessionError> {
+    pub fn session<RootElement>(&mut self, root: RootElement) -> Result<Session<RootElement>, SessionError> {
         let stream = self.tcp_listener
             .incoming()
             .next()
             .ok_or(SessionError::NoStream)?
             .map_err(SessionError::Stream)?;
-        self.accept(stream).map_err(SessionError::Handshake)
+        let session  = Session::new(accept(stream).map_err(SessionError::Handshake)?, root)
+            .map_err(SessionError::Tungstenite)?;
+        Ok(session)
     }
 }

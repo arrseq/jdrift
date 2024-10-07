@@ -1,6 +1,6 @@
 use crate::center::element::Kind;
-use crate::center::message::{Message, self};
-use std::cell::{Cell, Ref, RefCell, RefMut};
+use crate::center::message::{self, Message, PropertyKind};
+use std::cell::{Cell, Ref, RefCell};
 use std::rc::Rc;
 
 #[derive(Debug, PartialEq)]
@@ -15,11 +15,11 @@ pub struct Builder {
 impl Default for Builder {
     fn default() -> Self {
         Self {
-            class: 2,
-            parent: 1,
-            new_class: Rc::new(Cell::new(3)),
+            class: 1,
+            parent: 0,
+            new_class: Rc::new(Cell::new(2)),
             commands: Rc::new(RefCell::new(Vec::from([
-                Message { class: 2, kind: message::Kind::Create { parent: 1, kind: Kind::Division } }
+                // Message { class: 2, kind: message::Kind::Create { parent: 1, kind: Kind::Division } }
             ]))),
             kind: Kind::Division
         }
@@ -35,10 +35,22 @@ impl Builder {
         let class = self.get_next_class()?;
         self.commands.borrow_mut().push(Message {
             class,
-            kind: message::Kind::Create { parent: self.parent, kind }
+            kind: message::Kind::Create { parent: self.class, kind }
         });
 
         Some(class)
+    }
+    
+    pub(super) fn send_command(&self, message: message::Kind) {
+        self.commands.borrow_mut().push(Message { class: self.class, kind: message });
+    } 
+    
+    pub(super) fn set_text(&self, text: String) {
+        self.send_command(message::Kind::SetText { text });
+    }
+
+    pub(super) fn set_property(&self, kind: PropertyKind, property: String, value: String) {
+        self.send_command(message::Kind::SetProperty { kind, property, value });
     }
 
     /// Adds a delete element command and assigns it a unique class ID.
@@ -68,5 +80,9 @@ impl Builder {
 
     pub fn get_commands(&self) -> Ref<Vec<Message>> {
         self.commands.borrow()
+    }
+    
+    pub const fn get_kind(&self) -> Kind {
+        self.kind
     }
 }

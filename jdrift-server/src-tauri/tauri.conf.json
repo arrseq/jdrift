@@ -23,7 +23,7 @@
                 "open": true
             },
             "window": {
-                "startDragging": true
+                "all": true
             }
         },
         "windows": [

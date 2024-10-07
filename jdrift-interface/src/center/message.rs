@@ -13,6 +13,7 @@ pub enum Kind {
     Delete,
     SetText { text: String },
     SetProperty { kind: PropertyKind, property: String, value: String },
+    SetImageData { data: Vec<u8> }
 }
 
 #[derive(Debug, Clone, PartialEq, StructEncoded)]

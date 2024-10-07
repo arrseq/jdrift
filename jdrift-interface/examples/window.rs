@@ -1,15 +1,15 @@
 use jdrift_interface::center::Center;
-use jdrift_interface::center::element::container::{Container, self};
-use jdrift_interface::center::element::{Element, Kind, Inner};
-use jdrift_interface::center::element::builder::{Builder};
+use jdrift_interface::center::element::container::Container;
 
 fn host_session(center: &mut Center) {
-    let mut session = center.session().expect("Could not start session");
+    let mut session = center.session(Container::default()).expect("Could not start session");
     // let inner = ContainerContent::new();
     // session.append_child(inner);
 
     // Maintain session open
-    loop {}
+    while session.read().is_ok() {
+        
+    }
 }
 
 fn main() {
