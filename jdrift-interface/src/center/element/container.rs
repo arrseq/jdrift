@@ -1,21 +1,16 @@
-use std::cell::RefCell;
-use std::net::TcpStream;
-use std::rc::Rc;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use tungstenite::WebSocket;
 use super::{Element, Kind, New};
 use crate::center::element::builder::Builder;
-use crate::center::Session;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Container {
     update_render: Arc<AtomicBool>,
-    children: Vec<Box<dyn Element>>
+    children: Vec<Box<dyn Element + Send + Sync>>
 }
 
 impl Container {
-    pub fn append_child(&mut self, child: impl Element + 'static) {
+    pub fn append_child(&mut self, child: impl Element + 'static + Send + Sync) {
         self.children.push(Box::new(child));
         self.update()
     }
@@ -26,13 +21,9 @@ impl Element for Container {
         let component = builder.branch(Kind::Division).unwrap();
         for child in self.children.iter_mut() { child.build(&component) }
     }
-
-    fn hydrate(&mut self) {
-        todo!()
-    }
     
-    fn get_update_render(&self) -> &AtomicBool {
-        self.update_render.as_ref()
+    fn get_update_render(&self) -> &Arc<AtomicBool> {
+        &self.update_render
     }
 }
 

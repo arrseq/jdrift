@@ -9,9 +9,9 @@ use std::io;
 use std::io::Cursor;
 use std::net::{TcpListener, TcpStream};
 use std::ops::{Deref, DerefMut};
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
-use std::thread::JoinHandle;
+use std::thread::{spawn, JoinHandle};
 use thiserror::Error;
 use tungstenite::handshake::server::NoCallback;
 use tungstenite::{accept, HandshakeError, ServerHandshake, WebSocket};
@@ -25,7 +25,8 @@ pub struct Center {
 #[derive(Debug)]
 pub struct Session {
     socket: WebSocket<TcpStream>,
-    update_render: Arc<AtomicBool>,
+    pub(super) live: Arc<AtomicBool>,
+    pub update_render: Arc<AtomicBool>,
     pub root: Container
 }
 
@@ -37,6 +38,7 @@ impl Session {
         let update_render = Arc::new(AtomicBool::new(false));
         Self {
             socket: stream,
+            live: Arc::new(AtomicBool::new(true)),
             root: Container::new(update_render.clone()),
             update_render
         }
@@ -54,10 +56,6 @@ impl Session {
         self.socket.send(tungstenite::Message::Binary(bytes.into_inner()))
     }
 
-    pub fn create<T: element::New>(&mut self) -> T {
-        T::new(self.update_render.clone())
-    }
-
     pub fn update(&mut self) -> tungstenite::Result<()> {
         self.send(Message { class: Self::BODY_CLASS, kind: message::Kind::SetText { text: "".to_string() } })?;
         
@@ -65,6 +63,7 @@ impl Session {
         self.root.build(&builder);
 
         self.send_builder(builder).expect("Failed to send builder"); // TODO: handle error
+        self.update_render.store(false, Ordering::Release);
         Ok(())
     }
 
@@ -89,9 +88,33 @@ pub enum SessionError {
 }
 
 #[derive(Debug)]
-struct Renderer {
-    thread: JoinHandle<()>,
-    session: Arc<RwLock<Session>>
+pub struct Renderer {
+    session: Arc<RwLock<Session>>,
+    live: Arc<AtomicBool>,
+    update_render: Arc<AtomicBool>
+}
+
+impl Renderer {
+    pub fn new(session: Session) -> Self {
+        Self {
+            live: session.live.clone(),
+            update_render: session.update_render.clone(),
+            session: Arc::new(RwLock::new(session))
+        }
+    }
+    
+    pub fn spawn(self) -> JoinHandle<()> {
+        spawn(move || {
+            while self.live.load(Ordering::Acquire) {
+                // todo: error
+                if self.update_render.load(Ordering::Acquire) { self.session.write().expect("Failed to get session").update().unwrap() }
+            }
+        })
+    }
+    
+    pub fn get_session(&self) -> Arc<RwLock<Session>> {
+        self.session.clone()
+    }
 }
 
 impl Center {

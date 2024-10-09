@@ -64,13 +64,17 @@ pub enum StyleProperty<T> {
 
 pub trait Element: Debug {
     fn build(&mut self, builder: &Builder);
-    fn hydrate(&mut self);
-    fn get_update_render(&self) -> &AtomicBool;
+    fn get_update_render(&self) -> &Arc<AtomicBool>;
+    
     fn update(&self) {
         self.get_update_render().store(true, Ordering::Release);
     }
 }
 
-pub trait New: Debug {
+pub trait New: Debug + Element {
     fn new(update_render: Arc<AtomicBool>) -> Self;
+    
+    fn create<T: New>(&self) -> T {
+        T::new(self.get_update_render().clone())
+    }
 }

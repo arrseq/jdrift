@@ -47,7 +47,7 @@ let decoder = new Decoder({
         "enum[",
             "create[",
                 "parent: u32, ",
-                "kind: enum[division[], span[], paragraph[], button[], header[]]",
+                "kind: enum[division[], span[], paragraph[], button[], header[], canvas[]]",
             "], ",
             "delete[], ",
             "set_text[text: string], ",
