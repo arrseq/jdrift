@@ -1,15 +1,27 @@
+#![feature(let_chains)]
+
+use std::thread::sleep;
+use std::time::Duration;
 use jdrift_interface::center::Center;
 use jdrift_interface::center::element::container::Container;
 
 fn host_session(center: &mut Center) {
-    let mut session = center.session(Container::default()).expect("Could not start session");
-    // let inner = ContainerContent::new();
-    // session.append_child(inner);
+    let mut session = center.session().expect("Could not start session");
+    let container = session.create::<Container>();
+    session.root.append_child(container);
 
-    // Maintain session open
-    while session.read().is_ok() {
-        
+    session.update().expect("Failed to load");
+    sleep(Duration::from_secs(2));
+    for _ in 0..9 {
+        let container = session.create::<Container>();
+        session.root.append_child(container);
     }
+
+    // while session.read().is_ok() {
+    //
+    // }
+
+    loop {}
 }
 
 fn main() {

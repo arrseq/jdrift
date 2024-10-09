@@ -3,12 +3,13 @@ pub mod container;
 pub mod text;
 pub mod canvas;
 
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::sync::{Arc, Mutex};
-use xbinser_macros::EnumEncoded;
-use crate::center;
 use crate::center::element::builder::Builder;
+use crate::center::Session;
+use std::fmt::Debug;
+use std::ops::Deref;
+use std::sync::{Arc, RwLock};
+use std::sync::atomic::{AtomicBool, Ordering};
+use xbinser_macros::EnumEncoded;
 
 #[derive(Debug, Clone, Copy, PartialEq, EnumEncoded)]
 pub enum Kind {
@@ -61,14 +62,15 @@ pub enum StyleProperty<T> {
     Inherit
 }
 
-pub struct Element<InnerElement: ?Sized> {
-    pub(super) session: Rc<RefCell<center::Inner>>,
-    pub inner: Box<InnerElement>,
-    pub(super) parent: Option<Arc<Mutex<Element<dyn Buildable>>>>,
-    pub(super) is_hydrated: bool // todo
+pub trait Element: Debug {
+    fn build(&mut self, builder: &Builder);
+    fn hydrate(&mut self);
+    fn get_update_render(&self) -> &AtomicBool;
+    fn update(&self) {
+        self.get_update_render().store(true, Ordering::Release);
+    }
 }
 
-pub trait Buildable {
-    fn build(&mut self, builder: Builder);
-    fn hydrate(&mut self);
+pub trait New: Debug {
+    fn new(update_render: Arc<AtomicBool>) -> Self;
 }
