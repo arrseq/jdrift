@@ -103,11 +103,15 @@ impl Renderer {
         }
     }
     
-    pub fn spawn(self) -> JoinHandle<()> {
+    pub fn spawn(&self) -> JoinHandle<()> {
+        let live = self.live.clone();
+        let update_render = self.update_render.clone();
+        let session = self.session.clone();
+        
         spawn(move || {
-            while self.live.load(Ordering::Acquire) {
+            while live.load(Ordering::Acquire) {
                 // todo: error
-                if self.update_render.load(Ordering::Acquire) { self.session.write().expect("Failed to get session").update().unwrap() }
+                if update_render.load(Ordering::Acquire) { session.write().expect("Failed to get session").update().unwrap() }
             }
         })
     }
