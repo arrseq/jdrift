@@ -10,7 +10,7 @@ use std::io::Cursor;
 use std::net::{TcpListener, TcpStream};
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{spawn, JoinHandle};
 use thiserror::Error;
 use tungstenite::handshake::server::NoCallback;
@@ -70,6 +70,8 @@ impl Session {
     /// Read and manage events until the connection is closed.
     /// todo: finish type implementation
     pub fn read(&mut self) -> Result<(), ()> {
+        if self.update_render.load(Ordering::Acquire) { return Ok(()) }
+        
         if self.socket.read().is_err() { Err(()) }
         else { Ok(()) }
     }
@@ -89,7 +91,7 @@ pub enum SessionError {
 
 #[derive(Debug)]
 pub struct Renderer {
-    session: Arc<RwLock<Session>>,
+    session: Arc<Mutex<Session>>,
     live: Arc<AtomicBool>,
     update_render: Arc<AtomicBool>
 }
@@ -99,24 +101,24 @@ impl Renderer {
         Self {
             live: session.live.clone(),
             update_render: session.update_render.clone(),
-            session: Arc::new(RwLock::new(session))
+            session: Arc::new(Mutex::new(session))
         }
     }
-    
+
     pub fn spawn(&self) -> JoinHandle<()> {
         let live = self.live.clone();
         let update_render = self.update_render.clone();
         let session = self.session.clone();
-        
+
         spawn(move || {
             while live.load(Ordering::Acquire) {
                 // todo: error
-                if update_render.load(Ordering::Acquire) { session.write().expect("Failed to get session").update().unwrap() }
+                if update_render.load(Ordering::Acquire) { session.lock().expect("Failed to get session").update().unwrap() }
             }
         })
     }
-    
-    pub fn get_session(&self) -> Arc<RwLock<Session>> {
+
+    pub fn get_session(&self) -> Arc<Mutex<Session>> {
         self.session.clone()
     }
 }

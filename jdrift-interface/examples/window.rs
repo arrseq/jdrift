@@ -14,7 +14,7 @@ fn host_session(center: &mut Center) {
     let thread = renderer.spawn();
     
     {
-        let mut session = session.write().unwrap();
+        let mut session = session.lock().unwrap();
 
         let mut container = session.root.create::<Container>();
         let mut text = container.create::<Text>();
@@ -23,18 +23,22 @@ fn host_session(center: &mut Center) {
         session.root.append_child(container);
     }
     
-    sleep(Duration::from_secs(2));
+    sleep(Duration::from_secs(1));
     {
-        let mut session = session.write().unwrap();
+        let mut session = session.lock().unwrap();
+        // println!("second");
         let mut text = session.root.create::<Text>();
         text.set_text("This text is new and later added");
         session.root.append_child(text);
     }
 
-    // while session.read().is_ok() {
-    //
-    // }
+    sleep(Duration::from_secs(1));
 
+    loop {
+        // println!("looped");
+        session.lock().unwrap().read().unwrap()
+    }
+    
     thread.join().expect("Failed to join thread");
 }
 
