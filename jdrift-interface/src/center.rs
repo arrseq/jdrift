@@ -69,10 +69,13 @@ impl Session {
 
     /// Read and manage events until the connection is closed.
     /// todo: finish type implementation
-    pub fn read(&mut self) -> Result<(), ()> {
+    pub fn tick(&mut self) -> Result<(), ()> {
         if self.update_render.load(Ordering::Acquire) { return Ok(()) }
         
-        if self.socket.read().is_err() { Err(()) }
+        if self.socket.read().is_err() {
+            self.live.store(false, Ordering::Release);
+            Err(())
+        }
         else { Ok(()) }
     }
 }

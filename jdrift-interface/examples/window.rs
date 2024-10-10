@@ -34,9 +34,8 @@ fn host_session(center: &mut Center) {
 
     sleep(Duration::from_secs(1));
 
-    loop {
-        // println!("looped");
-        session.lock().unwrap().read().unwrap()
+    while session.lock().unwrap().tick().is_ok() {
+        
     }
     
     thread.join().expect("Failed to join thread");
