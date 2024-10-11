@@ -56,6 +56,23 @@ let decoder = new Decoder({
     ].join("")
 });
 
+/*
+use xbinser_macros::EnumDecoded;
+
+#[derive(Debug, Clone, Copy, PartialEq, EnumDecoded)]
+pub enum MouseButton {
+    Primary,
+    Scroll,
+    Secondary
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, EnumDecoded)]
+pub enum Event {
+    MouseClick { button: MouseButton, pressed: bool },
+
+}
+ */
+
 export interface PropertyKind {
     style?: {};
     attribute?: {};
@@ -130,7 +147,7 @@ async function main() {
         let buffer = new Uint8Array(await data.data.arrayBuffer());
         let decoded = decoder.decode(0n, buffer)[0] as Message;
         let class_id = Number(decoded.class);
-        if (decoded.kind.create)       create        (class_id, Number(decoded.kind.create.parent), decoded.kind.create.kind);
+        if (decoded.kind.create)       create        (class_id, Number(decoded.kind.create.parent), decoded.kind.create.kind, ws);
         if (decoded.kind.delete)       delete_element(class_id);
         if (decoded.kind.set_text)     set_text      (class_id, decoded.kind.set_text.text);
         if (decoded.kind.set_property) set_property  (class_id, decoded.kind.set_property.kind, decoded.kind.set_property.property, decoded.kind.set_property.value);

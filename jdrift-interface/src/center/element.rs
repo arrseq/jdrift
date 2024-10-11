@@ -2,13 +2,15 @@ pub mod builder;
 pub mod container;
 pub mod text;
 pub mod canvas;
+pub mod event;
 
 use crate::center::element::builder::Builder;
 use crate::center::Session;
 use std::fmt::Debug;
 use std::ops::Deref;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, LockResult, Mutex, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread::JoinHandle;
 use xbinser_macros::EnumEncoded;
 
 #[derive(Debug, Clone, Copy, PartialEq, EnumEncoded)]
@@ -64,17 +66,19 @@ pub enum StyleProperty<T> {
 
 pub trait Element: Debug {
     fn build(&mut self, builder: &Builder);
-    fn get_update_render(&self) -> &Arc<AtomicBool>;
+    fn get_renderer_thread(&self) -> &Arc<RwLock<JoinHandle<()>>>;
+    // fn handle_event(&mut self, event: Event)
     
-    fn update(&self) {
-        self.get_update_render().store(true, Ordering::Release);
+    fn update(&self) -> Result<(), PoisonError<RwLockReadGuard<JoinHandle<()>>>> {
+        self.get_renderer_thread().read()?.thread().unpark();
+        Ok(())
     }
 }
 
 pub trait New: Debug + Element {
-    fn new(update_render: Arc<AtomicBool>) -> Self;
+    fn new(renderer_thread: Arc<RwLock<JoinHandle<()>>>) -> Self;
     
     fn create<T: New>(&self) -> T {
-        T::new(self.get_update_render().clone())
+        T::new(self.get_renderer_thread().clone())
     }
 }

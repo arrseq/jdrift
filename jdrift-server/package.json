@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "tauri": "tauri",
-    "build:js": "esbuild src/main.ts --bundle --platform=browser --minify --sourcemap --outfile=src/build/index.js --tsconfig=tsconfig.json"
+    "build:js": "esbuild src/main.ts --bundle --platform=browser --minify --sourcemap --outfile=src/build/index.js --tsconfig=tsconfig.json",
+    "watch": "npm run build:js -- --watch"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^1"

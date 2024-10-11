@@ -1,18 +1,19 @@
 use super::{Element, Kind, New};
 use crate::center::element::builder::Builder;
 use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
+use std::thread::JoinHandle;
 
 #[derive(Debug)]
 pub struct Text {
-    update_render: Arc<AtomicBool>,
+    renderer_thread: Arc<RwLock<JoinHandle<()>>>,
     text: String
 }
 
 impl Text {
     pub fn set_text(&mut self, text: &str) {
         self.text = text.to_owned();
-        self.update()
+        self.update();
     }
 }
 
@@ -22,15 +23,15 @@ impl Element for Text {
         component.set_text(self.text.clone());
     }
 
-    fn get_update_render(&self) -> &Arc<AtomicBool> {
-        &self.update_render
+    fn get_renderer_thread(&self) -> &Arc<RwLock<JoinHandle<()>>> {
+        &self.renderer_thread
     }
 }
 
 impl New for Text {
-    fn new(update_render: Arc<AtomicBool>) -> Self {
+    fn new(update_render: Arc<RwLock<JoinHandle<()>>>) -> Self {
         Self {
-            update_render,
+            renderer_thread: update_render,
             text: String::new()
         }
     }

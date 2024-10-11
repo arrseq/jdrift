@@ -1,18 +1,19 @@
 use super::{Element, Kind, New};
 use crate::center::element::builder::Builder;
 use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
+use std::thread::JoinHandle;
 
 #[derive(Debug)]
 pub struct Container {
-    update_render: Arc<AtomicBool>,
+    renderer_thread: Arc<RwLock<JoinHandle<()>>>,
     children: Vec<Box<dyn Element + Send + Sync>>
 }
 
 impl Container {
     pub fn append_child(&mut self, child: impl Element + 'static + Send + Sync) {
         self.children.push(Box::new(child));
-        self.update()
+        self.update();
     }
 }
 
@@ -22,15 +23,15 @@ impl Element for Container {
         for child in self.children.iter_mut() { child.build(&component) }
     }
     
-    fn get_update_render(&self) -> &Arc<AtomicBool> {
-        &self.update_render
+    fn get_renderer_thread(&self) -> &Arc<RwLock<JoinHandle<()>>> {
+        &self.renderer_thread
     }
 }
 
 impl New for Container {
-    fn new(update_render: Arc<AtomicBool>) -> Self {
+    fn new(update_render: Arc<RwLock<JoinHandle<()>>>) -> Self {
         Self {
-            update_render,
+            renderer_thread: update_render,
             children: Vec::new()
         }
     }

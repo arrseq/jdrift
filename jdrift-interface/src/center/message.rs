@@ -1,7 +1,8 @@
-use xbinser_macros::{EnumEncoded, StructEncoded};
+use xbinser_macros::{EnumEncoded, StructDecoded, StructEncoded};
 use crate::center::element;
+use crate::center::element::event::Event;
 
-#[derive(Debug, Clone, PartialEq, EnumEncoded)]
+#[derive(Debug, Clone, Copy, PartialEq, EnumEncoded)]
 pub enum PropertyKind {
     Style,
     Attribute
@@ -20,4 +21,10 @@ pub enum Kind {
 pub struct Message {
     pub class: u32,
     pub kind: Kind
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, StructDecoded)]
+pub struct EventMessage {
+    class: u32,
+    kind: Event
 }

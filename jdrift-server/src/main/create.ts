@@ -1,3 +1,5 @@
+import {Decoder} from "xbinser/src/lib";
+
 export interface Kind {
     division?:  {};
     span?:      {};
@@ -7,7 +9,33 @@ export interface Kind {
     canvas?:     {};
 }
 
-export function create(class_id: number, parent: number, kind: Kind) {
+let mouse_button = "enum[primary[], scroll[], secondary[]]";
+
+let encoder = new Decoder({
+    class: "u32",
+    kind: ["enum[",
+        `mouse_click[button: ${mouse_button}, pressed: bool]`,
+    "]"].join("")
+});
+
+export interface MouseButton {
+    primary?: {};
+    scroll?: {};
+    secondary?: {};
+}
+
+export interface EventMessage {
+    class: number,
+    kind: {
+        mouse_click?: { button: MouseButton, pressed: boolean }
+    }
+}
+
+function send_event(ws: WebSocket, message: EventMessage) {
+    ws.send(encoder.encode(message));
+}
+
+export function create(class_id: number, parent: number, kind: Kind, ws: WebSocket) {
     let element: HTMLElement | undefined;
 
     if (kind.division) { element = document.createElement("div"); }
@@ -19,6 +47,27 @@ export function create(class_id: number, parent: number, kind: Kind) {
 
     if (element) {
         element.className = `class-${class_id}`;
+
+        element.addEventListener("mousedown", () => {
+            console.log("Down", class_id);
+
+            send_event(ws, {
+                class: class_id,
+                kind: {
+                    mouse_click: { button: { primary: {} }, pressed: true }
+                }
+            });
+        });
+
+        element.addEventListener("mouseup", () => {
+            send_event(ws, {
+                class: class_id,
+                kind: {
+                    mouse_click: { button: { primary: {} }, pressed: false }
+                }
+            });
+        });
+
         document.querySelector(`.class-${parent}`)?.appendChild(element);
     }
 }

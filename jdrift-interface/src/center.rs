@@ -4,18 +4,18 @@ pub mod element;
 use crate::center::element::builder::Builder;
 use crate::center::element::container::Container;
 use crate::center::element::{Element, New};
-use crate::center::message::Message;
-use std::io;
+use crate::center::message::{EventMessage, Message};
+use std::{io, thread};
 use std::io::Cursor;
 use std::net::{TcpListener, TcpStream};
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Condvar, LockResult, Mutex, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::thread::{spawn, JoinHandle};
 use thiserror::Error;
 use tungstenite::handshake::server::NoCallback;
 use tungstenite::{accept, HandshakeError, ServerHandshake, WebSocket};
-use xbinser::encoding::Encoded;
+use xbinser::encoding::{Decoded, Encoded};
 
 #[derive(Debug)]
 pub struct Center {
@@ -25,8 +25,7 @@ pub struct Center {
 #[derive(Debug)]
 pub struct Session {
     socket: WebSocket<TcpStream>,
-    pub(super) live: Arc<AtomicBool>,
-    pub update_render: Arc<AtomicBool>,
+    pub renderer_thread: Arc<RwLock<JoinHandle<()>>>,
     pub root: Container
 }
 
@@ -34,13 +33,11 @@ impl Session {
     pub const HEAD_CLASS: u32 = 0;
     pub const BODY_CLASS: u32 = 1;
 
-    fn new(stream: WebSocket<TcpStream>) -> Self {
-        let update_render = Arc::new(AtomicBool::new(false));
+    fn new(stream: WebSocket<TcpStream>, renderer_thread: Arc<RwLock<JoinHandle<()>>>) -> Self {
         Self {
             socket: stream,
-            live: Arc::new(AtomicBool::new(true)),
-            root: Container::new(update_render.clone()),
-            update_render
+            root: Container::new(renderer_thread.clone()),
+            renderer_thread
         }
     }
 
@@ -63,20 +60,19 @@ impl Session {
         self.root.build(&builder);
 
         self.send_builder(builder).expect("Failed to send builder"); // TODO: handle error
-        self.update_render.store(false, Ordering::Release);
         Ok(())
     }
 
     /// Read and manage events until the connection is closed.
     /// todo: finish type implementation
     pub fn tick(&mut self) -> Result<(), ()> {
-        if self.update_render.load(Ordering::Acquire) { return Ok(()) }
+        // if self.renderer_thread.load(Ordering::Acquire) { return Ok(()) }
         
-        if self.socket.read().is_err() {
-            self.live.store(false, Ordering::Release);
-            Err(())
-        }
-        else { Ok(()) }
+        if let Ok(tungstenite::Message::Binary(bytes)) = self.socket.read() {
+            let decoded = message::EventMessage::decode(&mut Cursor::new(bytes)).map_err(|_| ())?;
+            dbg!(decoded);
+            Ok(())
+        } else { Err(()) }
     }
 }
 
@@ -94,35 +90,43 @@ pub enum SessionError {
 
 #[derive(Debug)]
 pub struct Renderer {
-    session: Arc<Mutex<Session>>,
     live: Arc<AtomicBool>,
-    update_render: Arc<AtomicBool>
+    session: Arc<RwLock<Option<Session>>>,
+    handle: Arc<RwLock<JoinHandle<()>>>
 }
 
 impl Renderer {
-    pub fn new(session: Session) -> Self {
-        Self {
-            live: session.live.clone(),
-            update_render: session.update_render.clone(),
-            session: Arc::new(Mutex::new(session))
-        }
-    }
-
-    pub fn spawn(&self) -> JoinHandle<()> {
-        let live = self.live.clone();
-        let update_render = self.update_render.clone();
-        let session = self.session.clone();
-
-        spawn(move || {
-            while live.load(Ordering::Acquire) {
+    pub fn spawn(stream: WebSocket<TcpStream>) -> Renderer {
+        let live = Arc::new(AtomicBool::new(true));
+        let session: Arc<RwLock<Option<Session>>> = Arc::new(RwLock::new(None));
+        
+        let thread_live = live.clone();
+        let thread_session = session.clone();
+        let handle = spawn(move || {
+            while thread_live.load(Ordering::Acquire) {
                 // todo: error
-                if update_render.load(Ordering::Acquire) { session.lock().expect("Failed to get session").update().unwrap() }
+                let mut writer = thread_session.write().expect("Failed to get session");
+                let Some(session) = writer.as_mut() else { continue };
+                session.update().unwrap();
+                thread::park();
+                
+                println!("unparked");
             }
-        })
+        });
+        
+        let handle = Arc::new(RwLock::new(handle));
+        let new_session = Session::new(stream, handle.clone());
+        *session.write().unwrap() = Some(new_session);
+        Self { session, live, handle }
     }
-
-    pub fn get_session(&self) -> Arc<Mutex<Session>> {
-        self.session.clone()
+    
+    pub fn get_session(&self) -> LockResult<RwLockWriteGuard<Option<Session>>> {
+        self.session.write()
+    }
+    
+    pub fn join(self) -> Result<(), ()> {
+        Arc::into_inner(self.handle).unwrap().into_inner().unwrap().join().expect("POISON ERROR"); // todo; error
+        Ok(())
     }
 }
 
@@ -133,14 +137,12 @@ impl Center {
         })
     }
 
-    pub fn session(&mut self) -> Result<Session, SessionError> {
+    pub fn stream(&mut self) -> Result<WebSocket<TcpStream>, SessionError> {
         let stream = self.tcp_listener
             .incoming()
             .next()
             .ok_or(SessionError::NoStream)?
             .map_err(SessionError::Stream)?;
-        let mut session = Session::new(accept(stream).map_err(SessionError::Handshake)?);
-        session.update().expect("Failed to update"); // todo: handle update error
-        Ok(session)
+        Ok(accept(stream).map_err(SessionError::Handshake)?)
     }
 }

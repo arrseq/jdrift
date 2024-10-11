@@ -1,44 +1,29 @@
 #![feature(let_chains)]
 
+use std::sync::{Arc, Condvar, Mutex};
+use std::thread;
+use std::thread::sleep;
+use std::time::Duration;
 use jdrift_interface::center::element::container::Container;
 use jdrift_interface::center::element::text::Text;
 use jdrift_interface::center::element::New;
 use jdrift_interface::center::{Center, Renderer};
-use std::thread::sleep;
-use std::time::Duration;
 
 fn host_session(center: &mut Center) {
-    let renderer = Renderer::new(center.session().expect("Could not start session"));
-    let session = renderer.get_session();
-
-    let thread = renderer.spawn();
+    let renderer = Renderer::spawn(center.stream().expect("Could not start session"));
     
     {
-        let mut session = session.lock().unwrap();
-
+        let mut source = renderer.get_session().unwrap();
+        let session = source.as_mut().unwrap();
         let mut container = session.root.create::<Container>();
         let mut text = container.create::<Text>();
         text.set_text("Hello World: Body > Root: Container > Text: Text");
         container.append_child(text);
         session.root.append_child(container);
     }
-    
-    sleep(Duration::from_secs(1));
-    {
-        let mut session = session.lock().unwrap();
-        // println!("second");
-        let mut text = session.root.create::<Text>();
-        text.set_text("This text is new and later added");
-        session.root.append_child(text);
-    }
 
-    sleep(Duration::from_secs(1));
-
-    while session.lock().unwrap().tick().is_ok() {
-        
-    }
-    
-    thread.join().expect("Failed to join thread");
+    loop { }
+    renderer.join().expect("Failed to join thread");
 }
 
 fn main() {
