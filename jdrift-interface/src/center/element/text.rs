@@ -2,11 +2,11 @@ use super::{Element, Kind, New};
 use crate::center::element::builder::Builder;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, RwLock};
-use std::thread::JoinHandle;
+use std::thread::{JoinHandle, Thread};
 
 #[derive(Debug)]
 pub struct Text {
-    renderer_thread: Arc<RwLock<JoinHandle<()>>>,
+    renderer_thread: Thread,
     text: String
 }
 
@@ -23,13 +23,13 @@ impl Element for Text {
         component.set_text(self.text.clone());
     }
 
-    fn get_renderer_thread(&self) -> &Arc<RwLock<JoinHandle<()>>> {
+    fn get_renderer_thread(&self) -> &Thread {
         &self.renderer_thread
     }
 }
 
 impl New for Text {
-    fn new(update_render: Arc<RwLock<JoinHandle<()>>>) -> Self {
+    fn new(update_render: Thread) -> Self {
         Self {
             renderer_thread: update_render,
             text: String::new()

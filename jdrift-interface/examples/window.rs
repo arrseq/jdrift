@@ -11,19 +11,21 @@ use jdrift_interface::center::{Center, Renderer};
 
 fn host_session(center: &mut Center) {
     let renderer = Renderer::spawn(center.stream().expect("Could not start session"));
-    
+
     {
         let mut source = renderer.get_session().unwrap();
         let session = source.as_mut().unwrap();
-        let mut container = session.root.create::<Container>();
-        let mut text = container.create::<Text>();
-        text.set_text("Hello World: Body > Root: Container > Text: Text");
-        container.append_child(text);
-        session.root.append_child(container);
+        
+        for _ in 0..50 {
+            let mut container = session.root.create::<Container>();
+            let mut text = container.create::<Text>();
+            text.set_text("Hello World: Body > Root: Container > Text: Text");
+            container.append_child(text);
+            session.root.append_child(container);
+        }
     }
 
-    loop { }
-    renderer.join().expect("Failed to join thread");
+    renderer.join().expect("Cannot join");
 }
 
 fn main() {

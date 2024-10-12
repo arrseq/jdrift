@@ -11,7 +11,7 @@ use std::net::{TcpListener, TcpStream};
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, LockResult, Mutex, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use std::thread::{spawn, JoinHandle};
+use std::thread::{spawn, JoinHandle, Thread};
 use thiserror::Error;
 use tungstenite::handshake::server::NoCallback;
 use tungstenite::{accept, HandshakeError, ServerHandshake, WebSocket};
@@ -25,7 +25,7 @@ pub struct Center {
 #[derive(Debug)]
 pub struct Session {
     socket: WebSocket<TcpStream>,
-    pub renderer_thread: Arc<RwLock<JoinHandle<()>>>,
+    pub renderer_thread: Thread,
     pub root: Container
 }
 
@@ -33,7 +33,7 @@ impl Session {
     pub const HEAD_CLASS: u32 = 0;
     pub const BODY_CLASS: u32 = 1;
 
-    fn new(stream: WebSocket<TcpStream>, renderer_thread: Arc<RwLock<JoinHandle<()>>>) -> Self {
+    fn new(stream: WebSocket<TcpStream>, renderer_thread: Thread) -> Self {
         Self {
             socket: stream,
             root: Container::new(renderer_thread.clone()),
@@ -65,9 +65,7 @@ impl Session {
 
     /// Read and manage events until the connection is closed.
     /// todo: finish type implementation
-    pub fn tick(&mut self) -> Result<(), ()> {
-        // if self.renderer_thread.load(Ordering::Acquire) { return Ok(()) }
-        
+    fn tick(&mut self) -> Result<(), ()> {
         if let Ok(tungstenite::Message::Binary(bytes)) = self.socket.read() {
             let decoded = message::EventMessage::decode(&mut Cursor::new(bytes)).map_err(|_| ())?;
             dbg!(decoded);
@@ -92,7 +90,7 @@ pub enum SessionError {
 pub struct Renderer {
     live: Arc<AtomicBool>,
     session: Arc<RwLock<Option<Session>>>,
-    handle: Arc<RwLock<JoinHandle<()>>>
+    handle: JoinHandle<()>
 }
 
 impl Renderer {
@@ -104,18 +102,19 @@ impl Renderer {
         let thread_session = session.clone();
         let handle = spawn(move || {
             while thread_live.load(Ordering::Acquire) {
-                // todo: error
-                let mut writer = thread_session.write().expect("Failed to get session");
-                let Some(session) = writer.as_mut() else { continue };
-                session.update().unwrap();
+                {
+                    // todo: error
+                    let mut writer = thread_session.write().expect("Failed to get session");
+                    let Some(session) = writer.as_mut() else { continue };
+                    session.update().unwrap();
+                    
+                    session.tick();
+                }
                 thread::park();
-                
-                println!("unparked");
             }
         });
         
-        let handle = Arc::new(RwLock::new(handle));
-        let new_session = Session::new(stream, handle.clone());
+        let new_session = Session::new(stream, handle.thread().clone());
         *session.write().unwrap() = Some(new_session);
         Self { session, live, handle }
     }
@@ -125,7 +124,7 @@ impl Renderer {
     }
     
     pub fn join(self) -> Result<(), ()> {
-        Arc::into_inner(self.handle).unwrap().into_inner().unwrap().join().expect("POISON ERROR"); // todo; error
+        self.handle.join().unwrap(); // todo; error
         Ok(())
     }
 }
