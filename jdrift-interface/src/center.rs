@@ -26,7 +26,7 @@ pub struct Center {
 pub struct Session {
     socket: WebSocket<TcpStream>,
     pub renderer_thread: Thread,
-    pub root: Container
+    pub root: Arc<RwLock<Container>>
 }
 
 impl Session {
@@ -36,7 +36,7 @@ impl Session {
     fn new(stream: WebSocket<TcpStream>, renderer_thread: Thread) -> Self {
         Self {
             socket: stream,
-            root: Container::new(renderer_thread.clone()),
+            root: Arc::new(RwLock::new(Container::new(renderer_thread.clone()))),
             renderer_thread
         }
     }
@@ -89,7 +89,7 @@ pub enum SessionError {
 #[derive(Debug)]
 pub struct Renderer {
     live: Arc<AtomicBool>,
-    session: Arc<RwLock<Option<Session>>>,
+    session: Arc<Option<Session>>,
     handle: JoinHandle<()>
 }
 

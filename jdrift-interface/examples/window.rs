@@ -15,6 +15,7 @@ fn host_session(center: &mut Center) {
     {
         let mut source = renderer.get_session().unwrap();
         let session = source.as_mut().unwrap();
+        ensure_session_is_Safe(session);
         
         for _ in 0..50 {
             let mut container = session.root.create::<Container>();
@@ -27,6 +28,8 @@ fn host_session(center: &mut Center) {
 
     renderer.join().expect("Cannot join");
 }
+
+fn ensure_session_is_safe<S: Send + Sync>(s: &mut S) {}
 
 fn main() {
      let mut center = Center::new(4417).expect("Failed start center");
