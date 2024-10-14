@@ -94,7 +94,6 @@ impl Session {
             while thread_live.load(Ordering::Acquire) {
                 // todo: error
                 Self::update(&thread_socket, &shared);
-                if !thread_live.load(Ordering::Acquire) { break }
                 thread::park();
             }
         });
@@ -123,7 +122,7 @@ impl Session {
 
     pub fn stop(&self) {
         self.live.store(false, Ordering::Release);
-        self.handle.thread().unpark(); // todo: fix ordering, it may cause the parking to not happen
+        self.handle.thread().unpark();
     }
 }
 
