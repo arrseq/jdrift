@@ -65,7 +65,7 @@ pub enum StyleProperty<T> {
 }
 
 pub trait Element: Debug {
-    fn build(&mut self, builder: &Builder);
+    fn build(&self, builder: &Builder);
     fn get_renderer_thread(&self) -> &Thread;
     // fn handle_event(&mut self, event: Event)
     

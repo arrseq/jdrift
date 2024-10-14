@@ -22,58 +22,6 @@ pub struct Center {
     tcp_listener: TcpListener
 }
 
-#[derive(Debug)]
-pub struct Session {
-    socket: WebSocket<TcpStream>,
-    pub renderer_thread: Thread,
-    pub root: Arc<RwLock<Container>>
-}
-
-impl Session {
-    pub const HEAD_CLASS: u32 = 0;
-    pub const BODY_CLASS: u32 = 1;
-
-    fn new(stream: WebSocket<TcpStream>, renderer_thread: Thread) -> Self {
-        Self {
-            socket: stream,
-            root: Arc::new(RwLock::new(Container::new(renderer_thread.clone()))),
-            renderer_thread
-        }
-    }
-
-    fn send_builder(&mut self, builder: Builder) -> tungstenite::Result<()> {
-        for command in builder.get_commands().iter() { self.send(command.clone())? }
-        Ok(())
-    }
-
-    fn send(&mut self, message: Message) -> tungstenite::Result<()> {
-        // fixme: find stream for tungstenite
-        let mut bytes = Cursor::new(vec![0u8; 0]);
-        message.encode(&mut bytes).unwrap();
-        self.socket.send(tungstenite::Message::Binary(bytes.into_inner()))
-    }
-
-    pub fn update(&mut self) -> tungstenite::Result<()> {
-        self.send(Message { class: Self::BODY_CLASS, kind: message::Kind::SetText { text: "".to_string() } })?;
-        
-        let builder = Builder::default();
-        self.root.build(&builder);
-
-        self.send_builder(builder).expect("Failed to send builder"); // TODO: handle error
-        Ok(())
-    }
-
-    /// Read and manage events until the connection is closed.
-    /// todo: finish type implementation
-    fn tick(&mut self) -> Result<(), ()> {
-        if let Ok(tungstenite::Message::Binary(bytes)) = self.socket.read() {
-            let decoded = message::EventMessage::decode(&mut Cursor::new(bytes)).map_err(|_| ())?;
-            dbg!(decoded);
-            Ok(())
-        } else { Err(()) }
-    }
-}
-
 #[derive(Debug, Error)]
 pub enum SessionError {
     #[error("Failed to get stream from incoming iterator")]
@@ -87,44 +35,88 @@ pub enum SessionError {
 }
 
 #[derive(Debug)]
-pub struct Renderer {
+pub struct Session {
+    socket: Arc<RwLock<WebSocket<TcpStream>>>,
     live: Arc<AtomicBool>,
-    session: Arc<Option<Session>>,
-    handle: JoinHandle<()>
+    handle: JoinHandle<()>,
+    root: Arc<RwLock<Container>>
 }
 
-impl Renderer {
-    pub fn spawn(stream: WebSocket<TcpStream>) -> Renderer {
+impl Session {
+    pub const HEAD_CLASS: u32 = 0;
+    pub const BODY_CLASS: u32 = 1;
+
+    /// Read and manage events until the connection is closed.
+    /// todo: finish type implementation
+    pub fn tick(&self) -> Result<(), ()> {
+        if let Ok(tungstenite::Message::Binary(bytes)) = self.socket.write().unwrap().read() {
+            let decoded = message::EventMessage::decode(&mut Cursor::new(bytes)).map_err(|_| ())?;
+            dbg!(decoded);
+            Ok(())
+        } else { Err(()) }
+    }
+
+    fn send(socket: &Arc<RwLock<WebSocket<TcpStream>>>, message: Message) -> tungstenite::Result<()> {
+        // fixme: find stream for tungstenite and manage errors
+        let mut bytes = Cursor::new(vec![0u8; 0]);
+        message.encode(&mut bytes).unwrap();
+        socket.write().unwrap().send(tungstenite::Message::Binary(bytes.into_inner()))
+    }
+
+    fn send_builder(socket: &Arc<RwLock<WebSocket<TcpStream>>>, builder: Builder) -> tungstenite::Result<()> {
+        for command in builder.get_commands().iter() { Self::send(&socket, command.clone())? }
+        Ok(())
+    }
+
+    fn update(socket: &Arc<RwLock<WebSocket<TcpStream>>>, root: &Arc<RwLock<Container>>) -> tungstenite::Result<()> {
+        Self::send(socket, Message { class: Self::BODY_CLASS, kind: message::Kind::SetText { text: "".to_string() } })?;
+
+        // todo: errors
+        let builder = Builder::default();
+        root.read().unwrap().build(&builder);
+
+        Self::send_builder(socket, builder).expect("Failed to send builder"); // TODO: handle error
+        Ok(())
+    }
+
+    pub fn spawn(stream: WebSocket<TcpStream>) -> Session {
+        let socket = Arc::new(RwLock::new(stream));
         let live = Arc::new(AtomicBool::new(true));
-        let session: Arc<RwLock<Option<Session>>> = Arc::new(RwLock::new(None));
-        
+        let root: Arc<RwLock<Option<Arc<RwLock<Container>>>>> = Arc::new(RwLock::new(None));
+
+        let thread_socket = socket.clone();
         let thread_live = live.clone();
-        let thread_session = session.clone();
+        let thread_root = root.clone();
         let handle = spawn(move || {
+            thread::park();
+            let shared = thread_root.read().unwrap().clone().unwrap();
+            thread::park();
             while thread_live.load(Ordering::Acquire) {
-                {
-                    // todo: error
-                    let mut writer = thread_session.write().expect("Failed to get session");
-                    let Some(session) = writer.as_mut() else { continue };
-                    session.update().unwrap();
-                    
-                    session.tick();
-                }
+                // todo: error
+                Self::update(&thread_socket, &shared).expect("edit");
                 thread::park();
             }
         });
-        
-        let new_session = Session::new(stream, handle.thread().clone());
-        *session.write().unwrap() = Some(new_session);
-        Self { session, live, handle }
-    }
-    
-    pub fn get_session(&self) -> LockResult<RwLockWriteGuard<Option<Session>>> {
-        self.session.write()
+
+        let shared_root = Arc::new(RwLock::new(Container::new(handle.thread().clone())));
+        *root.write().unwrap() = Some(shared_root.clone());
+        handle.thread().unpark();
+        Self { root: shared_root, live, handle, socket }
     }
     
     pub fn join(self) -> Result<(), ()> {
         self.handle.join().unwrap(); // todo; error
+        Ok(())
+    }
+    
+    pub fn get_root(&self) -> Result<RwLockWriteGuard<Container>, ()> {
+        Ok(self.root.write().unwrap()) // todo: handle error
+    }
+    
+    pub fn start(&self) -> Result<(), ()> {
+        // todo: error
+        Self::update(&self.socket, &self.root).expect("edit");
+        self.handle.thread().unpark();
         Ok(())
     }
 }

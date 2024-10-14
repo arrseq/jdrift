@@ -18,9 +18,9 @@ impl Container {
 }
 
 impl Element for Container {
-    fn build(&mut self, builder: &Builder) {
+    fn build(&self, builder: &Builder) {
         let component = builder.branch(Kind::Division).unwrap();
-        for child in self.children.iter_mut() { child.build(&component) }
+        for child in self.children.iter() { child.build(&component) }
     }
     
     fn get_renderer_thread(&self) -> &Thread {

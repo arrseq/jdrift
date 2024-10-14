@@ -18,7 +18,7 @@ impl Text {
 }
 
 impl Element for Text {
-    fn build(&mut self, builder: &Builder) {
+    fn build(&self, builder: &Builder) {
         let component = builder.branch(Kind::Span).unwrap();
         component.set_text(self.text.clone());
     }
