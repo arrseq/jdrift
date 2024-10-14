@@ -75,7 +75,7 @@ impl Session {
         let builder = Builder::default();
         root.read().unwrap().build(&builder);
 
-        Self::send_builder(socket, builder).expect("Failed to send builder"); // TODO: handle error
+        Self::send_builder(socket, builder); // TODO: handle error
         Ok(())
     }
 
@@ -93,7 +93,8 @@ impl Session {
             thread::park();
             while thread_live.load(Ordering::Acquire) {
                 // todo: error
-                Self::update(&thread_socket, &shared).expect("edit");
+                Self::update(&thread_socket, &shared);
+                if !thread_live.load(Ordering::Acquire) { break }
                 thread::park();
             }
         });
@@ -108,16 +109,21 @@ impl Session {
         self.handle.join().unwrap(); // todo; error
         Ok(())
     }
-    
+
     pub fn get_root(&self) -> Result<RwLockWriteGuard<Container>, ()> {
         Ok(self.root.write().unwrap()) // todo: handle error
     }
-    
+
     pub fn start(&self) -> Result<(), ()> {
         // todo: error
         Self::update(&self.socket, &self.root).expect("edit");
         self.handle.thread().unpark();
         Ok(())
+    }
+
+    pub fn stop(&self) {
+        self.live.store(false, Ordering::Release);
+        self.handle.thread().unpark(); // todo: fix ordering, it may cause the parking to not happen
     }
 }
 
