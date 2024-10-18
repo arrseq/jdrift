@@ -45,6 +45,7 @@ let decoder = new Decoder({
     class: "u32",
     kind: [
         "enum[",
+            "load[], ",
             "create[",
                 "parent: u32, ",
                 "kind: enum[division[], span[], paragraph[], button[], header[], canvas[]]",
@@ -79,6 +80,7 @@ export interface PropertyKind {
 }
 
 interface MessageKind  {
+    load?: {};
     create?: { parent: number, kind: Kind };
     delete?: {};
     set_text?: { text: string };
@@ -143,14 +145,24 @@ async function main() {
         setTimeout(() => main().then(), 1000);
     }
 
+    let buffer_body = document.createElement("body");
+    function reset_buffer() {
+        buffer_body = document.createElement("body");
+        let inner = document.createElement("div");
+        inner.classList.add("class-2");
+        buffer_body.appendChild(inner);
+    }
+    reset_buffer();
+
     ws.onmessage = async (data) => {
         let buffer = new Uint8Array(await data.data.arrayBuffer());
         let decoded = decoder.decode(0n, buffer)[0] as Message;
         let class_id = Number(decoded.class);
-        if (decoded.kind.create)       create        (class_id, Number(decoded.kind.create.parent), decoded.kind.create.kind, ws);
-        if (decoded.kind.delete)       delete_element(class_id);
-        if (decoded.kind.set_text)     set_text      (class_id, decoded.kind.set_text.text);
-        if (decoded.kind.set_property) set_property  (class_id, decoded.kind.set_property.kind, decoded.kind.set_property.property, decoded.kind.set_property.value);
+        if (decoded.kind.load)         { document.body = buffer_body; reset_buffer(); }
+        if (decoded.kind.create)       create        (class_id, buffer_body, Number(decoded.kind.create.parent), decoded.kind.create.kind, ws);
+        if (decoded.kind.delete)       delete_element(class_id, buffer_body);
+        if (decoded.kind.set_text)     set_text      (class_id, buffer_body, decoded.kind.set_text.text);
+        if (decoded.kind.set_property) set_property  (class_id, buffer_body, decoded.kind.set_property.kind, decoded.kind.set_property.property, decoded.kind.set_property.value);
     }
 }
 

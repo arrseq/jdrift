@@ -3,6 +3,7 @@ use crate::center::element::builder::Builder;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, RwLock};
 use std::thread::{JoinHandle, Thread};
+use crate::center::element::event::Event;
 
 #[derive(Debug)]
 pub struct Text {
@@ -25,6 +26,10 @@ impl Element for Text {
 
     fn get_renderer_thread(&self) -> &Thread {
         &self.renderer_thread
+    }
+
+    fn handle_event(&mut self, event: Event) {
+        println!("(acorn) SHOTS FIRED: text event");
     }
 }
 

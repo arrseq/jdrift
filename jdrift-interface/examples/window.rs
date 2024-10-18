@@ -14,16 +14,31 @@ fn host_session(center: &mut Center) {
 
     {
         let mut source = renderer.get_root().unwrap();
+        source.set_direction();
+        
+        let mut l = source.create::<Container>();
+        let mut r = source.create::<Container>();
 
-        for _ in 0..50 {
+        for _ in 0..10 {
             let mut container = source.create::<Container>();
             let mut text = container.create::<Text>();
             text.set_text("Hello World: Body > Root: Container > Text: Text");
             container.append_child(text);
-            source.append_child(container);
+            l.append_child(container);
         }
+
+        for _ in 0..10 {
+            let mut container = source.create::<Container>();
+            let mut text = container.create::<Text>();
+            text.set_text("Hello World: Body > Root: Container > Text: Text");
+            container.append_child(text);
+            r.append_child(container);
+        }
+        
+        source.append_child(l);
+        source.append_child(r);
     }
-    
+
     renderer.start();
 
     while renderer.tick().is_ok() {}

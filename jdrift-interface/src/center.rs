@@ -4,7 +4,7 @@ pub mod element;
 use crate::center::element::builder::Builder;
 use crate::center::element::container::Container;
 use crate::center::element::{Element, New};
-use crate::center::message::{EventMessage, Message};
+use crate::center::message::{EventMessage, Kind, Message};
 use std::{io, thread};
 use std::io::Cursor;
 use std::net::{TcpListener, TcpStream};
@@ -12,10 +12,12 @@ use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, LockResult, Mutex, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::thread::{spawn, JoinHandle, Thread};
+use std::time::Duration;
 use thiserror::Error;
 use tungstenite::handshake::server::NoCallback;
 use tungstenite::{accept, HandshakeError, ServerHandshake, WebSocket};
 use xbinser::encoding::{Decoded, Encoded};
+use crate::center::element::event::Event;
 
 #[derive(Debug)]
 pub struct Center {
@@ -49,30 +51,30 @@ impl Session {
     /// Read and manage events until the connection is closed.
     /// todo: finish type implementation
     pub fn tick(&self) -> Result<(), ()> {
-        if let Ok(tungstenite::Message::Binary(bytes)) = self.socket.write().unwrap().read() {
+        let mut socket = self.socket.write().unwrap();
+        if let Ok(tungstenite::Message::Binary(bytes)) = socket.read() {
             let decoded = message::EventMessage::decode(&mut Cursor::new(bytes)).map_err(|_| ())?;
-            dbg!(decoded);
+            Self::update(&mut socket, &self.root, Some(decoded));
             Ok(())
         } else { Err(()) }
     }
 
-    fn send(socket: &Arc<RwLock<WebSocket<TcpStream>>>, message: Message) -> tungstenite::Result<()> {
+    fn send(socket: &mut RwLockWriteGuard<WebSocket<TcpStream>>, message: Message) -> tungstenite::Result<()> {
         // fixme: find stream for tungstenite and manage errors
         let mut bytes = Cursor::new(vec![0u8; 0]);
         message.encode(&mut bytes).unwrap();
-        socket.write().unwrap().send(tungstenite::Message::Binary(bytes.into_inner()))
-    }
-
-    fn send_builder(socket: &Arc<RwLock<WebSocket<TcpStream>>>, builder: Builder) -> tungstenite::Result<()> {
-        for command in builder.get_commands().iter() { Self::send(&socket, command.clone())? }
+        socket.send(tungstenite::Message::Binary(bytes.into_inner()));
         Ok(())
     }
 
-    fn update(socket: &Arc<RwLock<WebSocket<TcpStream>>>, root: &Arc<RwLock<Container>>) -> tungstenite::Result<()> {
-        Self::send(socket, Message { class: Self::BODY_CLASS, kind: message::Kind::SetText { text: "".to_string() } })?;
+    fn send_builder(socket: &mut RwLockWriteGuard<WebSocket<TcpStream>>, builder: Builder) -> tungstenite::Result<()> {
+        for command in builder.get_commands().iter() { Self::send(socket, command.clone())? }
+        Self::send(socket, Message { class: 0, kind: Kind::Load })
+    }
 
+    fn update(socket: &mut RwLockWriteGuard<WebSocket<TcpStream>>, root: &Arc<RwLock<Container>>, event: Option<EventMessage>) -> tungstenite::Result<()> {
         // todo: errors
-        let builder = Builder::default();
+        let builder = Builder::new(event);
         root.read().unwrap().build(&builder);
 
         Self::send_builder(socket, builder); // TODO: handle error
@@ -81,8 +83,10 @@ impl Session {
 
     pub fn spawn(stream: WebSocket<TcpStream>) -> Session {
         let socket = Arc::new(RwLock::new(stream));
-        let live = Arc::new(AtomicBool::new(true));
+        let live = Arc::new(AtomicBool::new(false));
         let root: Arc<RwLock<Option<Arc<RwLock<Container>>>>> = Arc::new(RwLock::new(None));
+
+        Self::send(&mut socket.write().unwrap(), Message { class: Self::BODY_CLASS, kind: message::Kind::SetText { text: "".to_string() } });
 
         let thread_socket = socket.clone();
         let thread_live = live.clone();
@@ -93,7 +97,7 @@ impl Session {
             thread::park();
             while thread_live.load(Ordering::Acquire) {
                 // todo: error
-                Self::update(&thread_socket, &shared);
+                Self::update(&mut thread_socket.write().unwrap(), &shared, None);
                 thread::park();
             }
         });
@@ -115,7 +119,10 @@ impl Session {
 
     pub fn start(&self) -> Result<(), ()> {
         // todo: error
-        Self::update(&self.socket, &self.root).expect("edit");
+        if self.live.load(Ordering::Relaxed) { return Ok(()) }
+
+        self.live.store(true, Ordering::Relaxed);
+        Self::update(&mut self.socket.write().unwrap(), &self.root, None).expect("edit");
         self.handle.thread().unpark();
         Ok(())
     }

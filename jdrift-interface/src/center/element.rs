@@ -12,6 +12,7 @@ use std::sync::{Arc, LockResult, Mutex, PoisonError, RwLock, RwLockReadGuard, Rw
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{JoinHandle, Thread};
 use xbinser_macros::EnumEncoded;
+use crate::center::element::event::Event;
 
 #[derive(Debug, Clone, Copy, PartialEq, EnumEncoded)]
 pub enum Kind {
@@ -64,20 +65,28 @@ pub enum StyleProperty<T> {
     Inherit
 }
 
-pub trait Element: Debug {
+/// # Warning
+/// Implementations should ensure that the fields can be consistent across threads. Clone is 
+/// required and will be used to clone any reference counters. If the type is not consistent, then 
+/// external modifications to an element will not be reflected.
+pub trait Element: Debug + Sync {
     fn build(&self, builder: &Builder);
     fn get_renderer_thread(&self) -> &Thread;
-    // fn handle_event(&mut self, event: Event)
-    
+    fn handle_event(&mut self, event: Event);
+
     fn update(&self) {
         self.get_renderer_thread().unpark();
     }
 }
 
-pub trait New: Debug + Element {
+pub trait New: Element {
     fn new(renderer_thread: Thread) -> Self;
     
     fn create<T: New>(&self) -> T {
         T::new(self.get_renderer_thread().clone())
     }
+}
+
+pub trait Parent: Element {
+    fn get_children(&self) -> Box<[Box<dyn Element>]>;
 }

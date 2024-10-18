@@ -10,6 +10,7 @@ pub enum PropertyKind {
 
 #[derive(Debug, Clone, PartialEq, EnumEncoded)]
 pub enum Kind {
+    Load,
     Create { parent: u32, kind: element::Kind },
     Delete,
     SetText { text: String },
@@ -25,6 +26,6 @@ pub struct Message {
 
 #[derive(Debug, Clone, Copy, PartialEq, StructDecoded)]
 pub struct EventMessage {
-    class: u32,
-    kind: Event
+    pub class: u32,
+    pub kind: Event
 }

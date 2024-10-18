@@ -6,7 +6,7 @@ export interface Kind {
     paragraph?: {};
     button?:    {};
     header?:    {};
-    canvas?:     {};
+    canvas?:    {};
 }
 
 let mouse_button = "enum[primary[], scroll[], secondary[]]";
@@ -35,7 +35,7 @@ function send_event(ws: WebSocket, message: EventMessage) {
     ws.send(encoder.encode(message));
 }
 
-export function create(class_id: number, parent: number, kind: Kind, ws: WebSocket) {
+export function create(class_id: number, buffer_body: HTMLBodyElement, parent: number, kind: Kind, ws: WebSocket) {
     let element: HTMLElement | undefined;
 
     if (kind.division) { element = document.createElement("div"); }
@@ -68,6 +68,6 @@ export function create(class_id: number, parent: number, kind: Kind, ws: WebSock
             });
         });
 
-        document.querySelector(`.class-${parent}`)?.appendChild(element);
+        buffer_body.querySelector(`.class-${parent}`)?.appendChild(element);
     }
 }

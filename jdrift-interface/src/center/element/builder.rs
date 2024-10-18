@@ -1,7 +1,8 @@
 use crate::center::element::Kind;
-use crate::center::message::{self, Message, PropertyKind};
+use crate::center::message::{self, EventMessage, Message, PropertyKind};
 use std::cell::{Cell, Ref, RefCell};
 use std::rc::Rc;
+use crate::center::element::event::Event;
 
 #[derive(Debug, PartialEq)]
 pub struct Builder {
@@ -9,24 +10,28 @@ pub struct Builder {
     parent: u32,
     new_class: Rc<Cell<u32>>,
     commands: Rc<RefCell<Vec<Message>>>,
-    kind: Kind
+    kind: Kind,
+    event: Option<EventMessage>
 }
 
-impl Default for Builder {
-    fn default() -> Self {
+impl Builder {
+    pub fn new(event: Option<EventMessage>) -> Self {
         Self {
             class: 1,
             parent: 0,
             new_class: Rc::new(Cell::new(2)),
-            commands: Rc::new(RefCell::new(Vec::from([
-                // Message { class: 2, kind: message::Kind::Create { parent: 1, kind: Kind::Division } }
-            ]))),
-            kind: Kind::Division
+            commands: Rc::new(RefCell::new(Vec::new())),
+            kind: Kind::Division,
+            event
         }
     }
-}
-
-impl Builder {
+    
+    pub const fn get_event(&self) -> Option<Event> {
+        let Some(event) = self.event else { return None };
+        if event.class != self.class { None }
+        else { Some(event.kind) }
+    }
+    
     /// Adds a create element command and assigns it a unique class ID.
     ///
     /// # Result
@@ -49,8 +54,8 @@ impl Builder {
         self.send_command(message::Kind::SetText { text });
     }
 
-    pub(super) fn set_property(&self, kind: PropertyKind, property: String, value: String) {
-        self.send_command(message::Kind::SetProperty { kind, property, value });
+    pub(super) fn set_property(&self, kind: PropertyKind, property: &str, value: &str) {
+        self.send_command(message::Kind::SetProperty { kind, property: String::from(property), value: String::from(value) });
     }
 
     /// Adds a delete element command and assigns it a unique class ID.
@@ -74,6 +79,7 @@ impl Builder {
             parent: self.class,
             new_class: self.new_class.clone(),
             commands: self.commands.clone(),
+            event: self.event,
             kind
         })
     }
