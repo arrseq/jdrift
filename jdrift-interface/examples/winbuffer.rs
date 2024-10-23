@@ -1,17 +1,20 @@
+#![windows_subsystem = "windows"]
+
 use std::{num::NonZeroU32, rc::Rc};
 
+use ocl::{Platform, DeviceType, Device};
 use softbuffer::{Context, Surface};
-use jdrift_interface::Window;
+use jdrift_interface::{Window, renderer::Renderer};
 
-fn rgb_h(r: u8, g: u8, b: u8) -> u32 {
-    let mut out = (r as u32) << 16;
-    out |= (g as u32) << 8;
-    out |= b as u32;
-    out
-}
+const SIZE: [usize; 2] = [400, 200];
 
 fn main() {
-    let mut window = Window::new("Hello World");
+    let device = Device::first(Platform::first().unwrap()).unwrap();
+    let mut renderer = Renderer::new(device, SIZE).expect("Window size is too large");
+
+    renderer.fill();
+
+    let mut window = Window::new(renderer);
+
     window.start();
-    loop {}
 }

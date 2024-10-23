@@ -14,31 +14,44 @@
 #![allow(clippy::should_implement_trait)]
 
 use std::num::NonZeroU32;
-use std::sync::Arc;
-
-use softbuffer::{Context, Surface, RGBX, RGBA};
+use std::ops::Deref;
+use std::sync::{Arc, RwLock, RwLockWriteGuard};
+use renderer::Renderer;
+use softbuffer::{Context, Surface};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window;
 use winit::window::{ResizeDirection, WindowId};
 
-pub mod server;
-pub mod center;
+pub mod renderer;
+// pub mod server;
+// pub mod center;
 
+#[derive(Clone)]
 struct AppState {
     window: Arc<window::Window>,
-    context: Context<Arc<window::Window>>,
-    surface: Surface<Arc<window::Window>, Arc<window::Window>>
+    surface: Arc<RwLock<Surface<Arc<window::Window>, Arc<window::Window>>>>
 }
 
+impl AppState {
+    pub fn surface_mut(&self) -> RwLockWriteGuard<Surface<Arc<window::Window>, Arc<window::Window>>> {
+        self.surface.write().unwrap()
+    }
+}
+
+#[derive(Clone)]
 struct App {
-    state: Option<AppState>
+    state: Option<AppState>,
+    renderer: Arc<RwLock<Renderer>>
 }
 
-impl Default for App {
-    fn default() -> Self {
-        Self { state: None }
+impl App {
+    pub fn new(renderer: Renderer) -> Self {
+        Self {
+            state: None,
+            renderer: Arc::new(RwLock::new(renderer))
+        }
     }
 }
 
@@ -48,11 +61,11 @@ impl ApplicationHandler for App {
         let context = Context::new(window.clone()).unwrap();
 
         window.set_decorations(false);
-        window.set_transparent(true);
+        window.set_resizable(true);
 
         self.state = Some(AppState {
-            surface: Surface::new(&context, window.clone()).unwrap(),
-            window, context
+            surface: Arc::new(RwLock::new(Surface::new(&context, window.clone()).unwrap())),
+            window
         });
     }
 
@@ -65,19 +78,16 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             },
             WindowEvent::RedrawRequested => {
+                self.renderer.write().unwrap().fill();
+
                 let size = inner.window.inner_size();
-                let mut buffer = inner.surface.buffer_mut().unwrap();
+                let mut surface = inner.surface_mut();
+                let mut buffer = surface.buffer_mut().unwrap();
 
-                let mut index = 0usize;
-                for y in 0..size.height {
-                    for x in 0..size.width {
-                        if x == 0 || x == size.width - 1
-                            || y == 0 || y == size.height - 1 {
-                            buffer[index] = u32::MAX;
-                        }
-
-                        index += 1;
-                    }
+                let frame = self.renderer.read().unwrap();
+                dbg!(&frame.get_frame()[0..10]);
+                for (index, pixel) in frame.get_frame().iter().enumerate() {
+                    buffer[index] = Self::rgb_to_hex(pixel[0], pixel[1], pixel[2]);
                 }
 
                 buffer.present();
@@ -86,7 +96,10 @@ impl ApplicationHandler for App {
                 if id != inner.window.id() { return }
                 let Some(width) = NonZeroU32::new(size.width) else { return };
                 let Some(height) = NonZeroU32::new(size.height) else { return };
-                inner.surface.resize(width, height).unwrap();
+
+                inner.surface_mut().resize(width, height).unwrap();
+                self.renderer.write().unwrap().resize([size.width as usize, size.height as usize]).unwrap()
+
             },
             WindowEvent::MouseInput { state: ElementState::Pressed, .. } => {
                 inner.window.drag_resize_window(ResizeDirection::East);
@@ -96,21 +109,25 @@ impl ApplicationHandler for App {
     }
 }
 
-pub struct Window {
-    app: App,
-    title: String
+impl App {
+    fn rgb_to_hex(r: u8, g: u8, b: u8) -> u32 {
+        let mut out = (r as u32) << 16;
+        out |= (g as u32) << 8;
+        out |= b as u32;
+        out
+    }
 }
 
+pub struct Window(App);
+
 impl Window {
-    pub fn new(title: &str) -> Self {
-        let mut app = App::default();
-        Self {
-            app, title: String::from(title)
-        }
+    pub fn new(renderer: Renderer) -> Self {
+        Self(App::new(renderer))
     }
 
     pub fn start(&mut self) {
         let r#loop = EventLoop::new().unwrap();
-        r#loop.run_app(&mut self.app).unwrap();
+        r#loop.run_app(&mut self.0).unwrap();
     }
 }
+
