@@ -1,5 +1,5 @@
 use ocl::{Kernel, Device, ProQue, builders::BufferBuilder, prm::Uchar3, Buffer};
-use ocl::prm::Ulong2;
+use ocl::prm::{Uchar, Ulong2};
 use thiserror::Error;
 
 pub type Pixel = Uchar3;
@@ -10,7 +10,7 @@ pub struct Renderer {
     fill_kernel: ProQue,
     frame: Vec<Pixel>,
     buffer: Buffer<Uchar3>,
-    time: f32
+    pub glow: bool
 }
 
 #[derive(Debug, Error, PartialEq)]
@@ -35,7 +35,7 @@ impl Renderer {
             buffer: fill_kernel.create_buffer().unwrap(), // todo: err
             fill_kernel,
             frame: vec![Uchar3::zero(); Self::get_pixel_count(size)?],
-            time: 0.0
+            glow: false
         })
     }
 
@@ -64,6 +64,7 @@ impl Renderer {
             let kernel = self.fill_kernel.kernel_builder(Self::FILL_KERNEL_NAME)
                 .arg(&self.buffer)
                 .arg(Ulong2::new(self.size[0], self.size[1]))
+                .arg(Uchar::new(if self.glow { 1 } else { 0 }))
                 .build()
                 .unwrap();
             

@@ -1,4 +1,4 @@
-__kernel void fill(__global uchar3* buffer, ulong2 size) {
+__kernel void fill(__global uchar3* buffer, ulong2 size, uchar glow) {
     size_t gid = get_global_id(0);
 
     uchar3 color = 0;
@@ -13,5 +13,9 @@ __kernel void fill(__global uchar3* buffer, ulong2 size) {
     if (!(x >= p0.x && x <= p1.x)) { return; }
     if (!(y >= p0.y && y <= p1.y)) { return; }
 
+    if (glow) {
+        buffer[gid] = (uchar3) (255, 200, 30);
+        return;
+    }
     buffer[gid] = (uchar3) (255, 0, 0);
 }
