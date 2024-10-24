@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{num::NonZeroU32, rc::Rc};
 
@@ -6,7 +6,7 @@ use ocl::{Platform, DeviceType, Device};
 use softbuffer::{Context, Surface};
 use jdrift_interface::{Window, renderer::Renderer};
 
-const SIZE: [usize; 2] = [400, 200];
+const SIZE: [u64; 2] = [400, 200];
 
 fn main() {
     let device = Device::first(Platform::first().unwrap()).unwrap();

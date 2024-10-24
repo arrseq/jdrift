@@ -60,7 +60,7 @@ impl ApplicationHandler for App {
         let window = Arc::new(event_loop.create_window(window::Window::default_attributes()).unwrap());
         let context = Context::new(window.clone()).unwrap();
 
-        window.set_decorations(false);
+        // window.set_decorations(false);
         window.set_resizable(true);
 
         self.state = Some(AppState {
@@ -85,7 +85,6 @@ impl ApplicationHandler for App {
                 let mut buffer = surface.buffer_mut().unwrap();
 
                 let frame = self.renderer.read().unwrap();
-                dbg!(&frame.get_frame()[0..10]);
                 for (index, pixel) in frame.get_frame().iter().enumerate() {
                     buffer[index] = Self::rgb_to_hex(pixel[0], pixel[1], pixel[2]);
                 }
@@ -98,12 +97,9 @@ impl ApplicationHandler for App {
                 let Some(height) = NonZeroU32::new(size.height) else { return };
 
                 inner.surface_mut().resize(width, height).unwrap();
-                self.renderer.write().unwrap().resize([size.width as usize, size.height as usize]).unwrap()
-
+                println!("Event: Window resized {:?}", [size.width as u64, size.height as u64]);
+                self.renderer.write().unwrap().resize([size.width as u64, size.height as u64]).unwrap()
             },
-            WindowEvent::MouseInput { state: ElementState::Pressed, .. } => {
-                inner.window.drag_resize_window(ResizeDirection::East);
-            }
             _ => (),
         }
     }
