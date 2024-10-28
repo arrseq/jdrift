@@ -78,7 +78,13 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             },
             WindowEvent::RedrawRequested => {
-                self.renderer.write().unwrap().fill();
+                let red = [ 255, 0, 0 ];
+                let mut renderer = self.renderer.write().unwrap();
+
+                renderer.fill([ [10, 10], [20, 10], [20, 20] ], red);
+                renderer.fill([ [10, 20], [20, 20], [10, 10] ], red);
+
+                drop(renderer);
 
                 let size = inner.window.inner_size();
                 let mut surface = inner.surface_mut();
@@ -97,14 +103,9 @@ impl ApplicationHandler for App {
                 let Some(height) = NonZeroU32::new(size.height) else { return };
 
                 inner.surface_mut().resize(width, height).unwrap();
-                println!("Event: Window resized {:?}", [size.width as u64, size.height as u64]);
                 self.renderer.write().unwrap().resize([size.width as u64, size.height as u64]).unwrap()
             },
             WindowEvent::CursorMoved { position, .. } => {
-                let p0 = [100f64, 100.0];
-                let p1 = [200f64, 200.0];
-                self.renderer.write().unwrap().glow = position.x >= p0[0] && position.x <= p1[0]
-                    && position.y >= p0[1] && position.y <= p1[1];
                 inner.window.request_redraw();
             }
             _ => (),
