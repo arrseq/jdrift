@@ -3,6 +3,7 @@ use ocl::prm::{Uchar, Ulong2};
 use thiserror::Error;
 
 pub mod shape;
+pub mod vec2;
 
 pub type Pixel = Uchar3;
 

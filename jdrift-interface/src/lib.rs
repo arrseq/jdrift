@@ -4,6 +4,7 @@
 #![feature(let_chains)]
 #![feature(const_trait_impl)]
 #![feature(fn_traits)]
+#![feature(isqrt)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 #![deny(clippy::large_types_passed_by_value)]
 #![allow(clippy::unusual_byte_groupings)]
