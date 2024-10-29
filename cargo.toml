@@ -1,2 +1,12 @@
-[workspace]
-members = [ "jdrift-interface" ]
+[package]
+name = "jdrift-interface"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ocl = "0.19.7"
+pollster = "0.4.0"
+softbuffer = { version = "0.4.6" }
+thiserror = "1.0.64"
+wgpu = "22.1.0"
+winit = "0.30.5"
