@@ -22,6 +22,10 @@ impl Ndc {
     pub fn get(&self) -> f32 {
         self.0
     }
+    
+    pub fn square(self) -> f32 {
+        self.0.sqrt()
+    }
 }
 
 macro_rules! implement_ndc_operator {
@@ -49,11 +53,26 @@ impl Vec2 {
         Self([ first, second ])
     }
 
-    pub fn distance(self, other: Self) -> Self {
-        todo!()
+    pub fn distance(self, other: Self) -> f32 {
+        let first = other.0[0] - self.0[0];
+        let second = other.0[1] - self.0[1];
+        (first + second).square()
+    }
+    
+    pub fn x(self) -> Ndc {
+        self.0[0]
+    }
+    
+    pub fn y(self) -> Ndc {
+        self.0[1]
+    }
+    
+    pub fn slope(self, other: Self) -> f32 {
+        let first = other.y().get() - self.y().get();
+        let second = other.x().get() - self.x().get();
+        first / second
     }
 }
-
 
 macro_rules! implement_vec2_operator {
     ($operator: tt, $trait: ty, $method: ident) => {
@@ -76,5 +95,5 @@ implement_vec2_operator!(/, Div, div);
 macro_rules! vec2 {
      ($first: expr, $second: expr) => {
          Vec2::new(Ndc::new_clamped($first), Ndc::new_clamped($second))
-     };
- }
+     }
+}

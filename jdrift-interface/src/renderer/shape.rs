@@ -1,23 +1,16 @@
-fn length(segment: [[usize; 2]; 2]) -> usize {
-    let first = (segment[1][0] - segment[0][0]);
-    let second = (segment[1][1] - segment[0][1]);
-    (first + second).isqrt()
-}
+use crate::renderer::vec2::Vec2;
 
-pub fn flatten_curve(points: [[usize; 2]; 4], resolution: usize) -> Vec<[usize; 2]> {
+pub fn flatten_curve(points: [Vec2; 4], resolution: usize) -> Vec<Vec2> {
     let step_size = 1.0f32 / resolution as f32;
     let mut position = 0.0;
+    
     let lengths = [
-        length([ points[0], points[1] ]),
-        length([ points[1], points[2] ]),
-        length([ points[2], points[3] ])
+        points[0].distance(points[1]),
+        points[1].distance(points[2]),
+        points[2].distance(points[3])
     ];
     
-    
-    dbg!(lengths);
-    
     for _ in 0..resolution {
-        println!("{position}");
         position += step_size;
     }
     
